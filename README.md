@@ -3,7 +3,7 @@
 A visual page editor, a data model you can change without a developer, a media library and a gateway to your existing APIs, in **one installation you run yourself**.
 TypeScript, Vue 3, Postgres, S3-compatible storage. MIT licence, one organisation per installation, no per-user fee.
 
-[**Live sandbox**](https://sandbox.whoobe.dev) · [**Documentation**](https://docs.whoobe.dev) · [unifythestack.dev](https://unifythestack.dev)
+[**Live sandbox**](https://sandbox.whoobe.dev) · [**Documentation**](https://docs.whoobe.dev) · [**How Whoobe evolves**](docs/release/community/project-evolution.md) (contributors and testers wanted) · [unifythestack.dev](https://unifythestack.dev)
 
 ## Try it
 

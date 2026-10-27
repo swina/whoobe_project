@@ -52,7 +52,7 @@ The detailed documentation is organised by what Whoobe does. Each pillar has an 
 | [`api/`](https://github.com/swina/whoobe_project/tree/master/docs/release/api) | [API reference](api/api-reference.md) and [`openapi.yaml`](https://github.com/swina/whoobe_project/blob/master/docs/release/api/openapi.yaml), both generated from one route table by [`gen-api-docs.py`](https://github.com/swina/whoobe_project/blob/master/docs/release/api/gen-api-docs.py) |
 | [`whoobe-history.md`](whoobe-history.md) | The story of Whoobe |
 | [`credits.md`](credits.md) | Thanks to the open-source projects Whoobe is built with and works with; the legal record is [`THIRD_PARTY_NOTICES.md`](https://github.com/swina/whoobe_project/blob/master/THIRD_PARTY_NOTICES.md) |
-| [`community/`](community/why-sponsor-and-contribute.md) | Why sponsor and why contribute to open-source projects, and how to help Whoobe |
+| [`community/`](community/why-sponsor-and-contribute.md) | Why sponsor and why contribute to open-source projects, and how to help Whoobe; [how Whoobe evolves](community/project-evolution.md): what comes next, what is built only when funded, and the rule that the code stays MIT |
 | [`release-process.md`](release-process.md) | How a release is made: versions, support policy, release gates, procedure |
 | [`release-notes-0.3.2.md`](release-notes-0.3.2.md), [`0.3.1`](release-notes-0.3.1.md), [`0.3.0`](release-notes-0.3.0.md), [`0.2.0`](release-notes-0.2.0.md), [`0.1.1`](release-notes-0.1.1.md), [`0.1.0`](release-notes-0.1.0.md) | What each release contains, behaviour changes to check before upgrading, known limits |
 

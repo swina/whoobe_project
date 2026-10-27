@@ -64,14 +64,14 @@ The documentation says plainly what has not been tested. Each of these is a real
 ### 3.2 Ways to sponsor
 
 The repository has GitHub Sponsors enabled for the author (`.github/FUNDING.yml`): use the **Sponsor** button on the repository. Organisations that want
-something other than a monthly contribution (a support arrangement, a funded feature, a partnership) should talk to the author directly; terms are
-agreed case by case, not published here.
+to fund a feature should talk to the author directly. What funding buys and what it does not (no exclusivity, no maintenance, no installation
+or support for now), and the features that are built only when funded, are on [how Whoobe evolves](project-evolution.md).
 
 ### 3.3 What a sponsorship does not do
 
 - It does not buy a service-level agreement or a certification: Whoobe has no vendor support organisation today (the [overview](../overview/whoobe-overview.md) says so).
 - It does not change the licence: the code stays MIT.
-- It does not pay for a feature unless that is agreed explicitly.
+- It does not pay for a feature unless that is agreed explicitly; a funded feature is published under the MIT licence for everyone ([how Whoobe evolves](project-evolution.md)).
 
 ## 4. A short checklist
 
