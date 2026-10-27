@@ -4,6 +4,8 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('openai', () => ({
   default: class {
     chat = { completions: { create: async () => ({ choices: [{ message: { content: '{"a":1}' }, finish_reason: 'stop' }], usage: { prompt_tokens: 120, completion_tokens: 30 } }) } };
+    // OpenRouter's image reply: chat-style token names, no input/output_tokens
+    images = { generate: async () => ({ data: [{ b64_json: 'AAAA' }], usage: { prompt_tokens: 4, completion_tokens: 989, total_tokens: 993, cost: 0.01 } }) };
   },
 }));
 vi.mock('@anthropic-ai/sdk', () => ({
@@ -14,6 +16,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
 
 const { createAiUsageMeter, runWithAiUsageMeter, reportAiUsage } = await import('./usage.js');
 const { generateAiJson, AiGenerationError } = await import('./providers.js');
+const { generateImage } = await import('./image-providers.js');
 
 const settings = (provider: string) => ({ provider, model: 'm-test', endpoint: null, apiKey: 'k' });
 
@@ -62,5 +65,11 @@ describe('AI usage meter', () => {
     await expect(runWithAiUsageMeter(meter, () => generateAiJson({ settings: settings('anthropic'), systemPrompt: '', userPrompt: 'x' }))).rejects.toBeInstanceOf(AiGenerationError);
     expect(meter.usage).toEqual({ calls: 1, inputTokens: 50, outputTokens: 7 });
     expect(meter.provider).toBe('anthropic');
+  });
+
+  it('receives the tokens of an image reply in the OpenRouter shape (prompt/completion_tokens)', async () => {
+    const meter = createAiUsageMeter();
+    await runWithAiUsageMeter(meter, () => generateImage({ settings: { provider: 'openrouter', model: 'meta/muse-image', endpoint: null, apiKey: 'k' }, prompt: 'x' } as any));
+    expect(meter.usage).toEqual({ calls: 1, inputTokens: 4, outputTokens: 989 });
   });
 });

@@ -1,3 +1,11 @@
+## AI usage: image tokens from OpenRouter, the toast above the modals, the report in its own tab — 2026-10-27
+- Branch: `fix/ai-usage-feedback`. Found by the owner trying an AI image (OpenRouter, `meta/muse-image`) on the local stack: the request was recorded with no tokens and no toast was seen.
+- `packages/core/src/ai/image-providers.ts`: OpenRouter's image reply reports `prompt_tokens`/`completion_tokens` (here 4 / 989), not `input_tokens`/`output_tokens`; both are read now. `usage.test.ts`: an image reply in that shape (6 tests pass).
+- `AiUsageToast.vue` (dashboard and editor): `z-[100001]`; the dashboard's modals are at 10050 and the AI image modal stays open on its result, so the toast was drawn under the overlay.
+- Dashboard: the report moved out of *Security > AI Usage* into a main tab (`views/AiUsageView.vue`, section `ai-usage`, opened by *Open the AI usage report*); the Security card keeps the switch and the two periods. `ai-features.md`, `ai-usage-plan.md`, `data-protection.md` say where it is.
+- Typecheck passes (core, admin-dashboard, editor).
+- Local stack after the merge: core-api did not start (`createAiUsageMeter` missing) because the packages' `dist/` predated it; rebuilt. After a merge that touches `packages/*`, start with `./dev-cms.sh --build`.
+
 ## Merge feat/ai-usage into master — 2026-10-27
 - Branch: `master`. AI usage per user and AI history retention (F-064) merged after the green CI of `feat/ai-usage`; `CHANGES.md` conflict resolved keeping both entries; `security/status-summary.md` F-064 now says fixed on `master` after 0.3.2. Typecheck passes (19 tasks). Not yet tried against a real AI provider.
 

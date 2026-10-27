@@ -54,7 +54,7 @@ the number of calls.
 An administrator can also **record** the usage of each person (*Security > AI Usage*, off by default): one row per request with the function, provider,
 model, tokens and date, **never the prompt or the answer**, deleted after 90 days by default, plus monthly totals. The report of every person needs
 the `ai_usage:read` permission (`admin` only); opening one person's requests is written to the audit log; every person sees what is recorded about
-them under *Mine*. A record per person is personal data about staff: inform them before turning it on, and check whether your country needs an
+them under *Mine*. The report opens as its own tab (the *Open the AI usage report* button of *Security > AI Usage*). A record per person is personal data about staff: inform them before turning it on, and check whether your country needs an
 agreement for a tool that can monitor workers ([data protection](../security/data-protection.md), section 2). The same card sets how long the AI
 history (`whoobe_ai_generated`, which keeps prompts and answers) is kept.
 

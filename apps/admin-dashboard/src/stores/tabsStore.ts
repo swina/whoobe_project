@@ -12,7 +12,7 @@ import { ref } from 'vue'
 // with Preview (the read-only rendered HTML) as a second sub-tab, mirroring
 // how an asset opens into Preview with Edit Image as a sibling sub-tab.
 
-export type SectionKind = 'overview' | 'ai' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'kits' | 'components' | 'mail' | 'themes' | 'palettes' | 'settings' | 'gateway' | 'gateway-plugins' | 'api-clients' | 'data-bindings' | 'automations' | 'object-events' | 'security' | 'publish' | 'site-wizard'
+export type SectionKind = 'overview' | 'ai' | 'websites' | 'objects' | 'assets' | 'documents' | 'pages' | 'snippets' | 'kits' | 'components' | 'mail' | 'themes' | 'palettes' | 'settings' | 'gateway' | 'gateway-plugins' | 'api-clients' | 'data-bindings' | 'automations' | 'object-events' | 'security' | 'publish' | 'site-wizard' | 'ai-usage'
 export type MasterItemKind = 'asset' | 'document' | 'page' | 'snippet' | 'object' | 'class' | 'classList' | 'website' | 'docsSite' | 'docsDoc' | 'apiClient' | 'objectEventLog' | 'integrationImport'
 // The AI section of the navigation (its own sidebar entry, no longer part of Settings): one card per kind of AI provider.
 export type AiSubSection = 'text' | 'image' | 'translate'

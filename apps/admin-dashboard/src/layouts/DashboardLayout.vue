@@ -635,6 +635,7 @@ import {
   ListChecks,
   CircleHelp,
   LayoutTemplate,
+  Gauge,
 } from '@lucide/vue'
 import { useDamStore } from '../stores/damStore'
 import { useDocumentsStore } from '../stores/documentsStore'
@@ -680,6 +681,7 @@ import GatewayEndpointsView from '../views/GatewayEndpointsView.vue'
 import GatewayPluginsView from '../views/GatewayPluginsView.vue'
 import AutomationsView from '../views/AutomationsView.vue'
 import ObjectEventsView from '../views/ObjectEventsView.vue'
+import AiUsageView from '../views/AiUsageView.vue'
 import DataBindingsView from '../views/DataBindingsView.vue'
 import ApiClientsView from '../views/ApiClientsView.vue'
 import { usePagesStore } from '../stores/pagesStore'
@@ -1057,6 +1059,7 @@ const sectionComponents: Record<SectionKind, any> = {
   websites: WebsitesView,
   publish: PublishView,
   'site-wizard': SiteWizardView,
+  'ai-usage': AiUsageView,
   objects: ObjectsView,
   assets: AssetsView,
   documents: DocumentsView,
@@ -1083,6 +1086,7 @@ const sectionLabels: Record<SectionKind, string> = {
   websites: 'Websites',
   publish: 'Publish',
   'site-wizard': 'Generate Website Wizard',
+  'ai-usage': 'AI Usage',
   objects: 'Data Objects',
   assets: 'Assets',
   documents: 'Documents',
@@ -1109,6 +1113,7 @@ const sectionIcons: Record<SectionKind, any> = {
   websites: Globe,
   publish: Rocket,
   'site-wizard': LayoutTemplate,
+  'ai-usage': Gauge,
   objects: Database,
   assets: FolderArchive,
   documents: FileText,
