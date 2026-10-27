@@ -512,6 +512,13 @@
       "when": 1790001200000,
       "tag": "0072_custom_fonts",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1790001300000,
+      "tag": "0073_ai_usage",
+      "breakpoints": true
     }
   ]
 }

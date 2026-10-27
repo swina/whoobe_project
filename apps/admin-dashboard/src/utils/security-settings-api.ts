@@ -14,6 +14,12 @@ export interface SecuritySettings {
   passwordPolicy: PasswordPolicy
   /** days after which a row of the mail log is deleted; null = keep */
   mailLogRetentionDays: number | null
+  /** token usage of the AI functions recorded per user; off by default */
+  aiUsageTracking: boolean
+  /** days after which a row of the AI usage is deleted (the monthly totals stay); null = keep */
+  aiUsageRetentionDays: number | null
+  /** days after which a recorded AI generation (prompt and answer) is deleted; null = keep */
+  aiGeneratedRetentionDays: number | null
   updatedAt: string | null
   /** every role, for the picker (a settings manager may not be allowed to list roles) */
   roles?: { id: string; name: string }[]
@@ -24,6 +30,9 @@ export interface SecuritySettingsInput {
   passwordMinLength?: number
   passwordRequireClasses?: boolean
   mailLogRetentionDays?: number | null
+  aiUsageTracking?: boolean
+  aiUsageRetentionDays?: number | null
+  aiGeneratedRetentionDays?: number | null
 }
 
 function normalizeBaseUrl(baseUrl: string): string {

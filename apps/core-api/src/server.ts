@@ -233,6 +233,11 @@ import {
   listAiGenerated,
   createAiGenerated,
   generateAiJson,
+  createAiUsageMeter,
+  runWithAiUsageMeter,
+  recordAiUsage,
+  getAiUsageReport,
+  getAiUsageMonthly,
   generateImage,
   AiImageGenerationError,
   saveAiImageToDam,
@@ -524,6 +529,26 @@ function aiRateLimit(req: Request, res: Response, next: NextFunction): void {
     return;
   }
   next();
+}
+
+// Token usage of an AI request (docs/plans/ai/ai-usage-plan.md): every reply of the provider is counted by the meter of
+// the request, the answer carries `usage` (shown to the person who asked, always) and the request is recorded for its user
+// only while an administrator has the tracking on (Settings > Security). Counts only: never the prompt or the answer.
+function aiMetered(kind: string | ((req: Request) => string)) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const meter = createAiUsageMeter();
+    const json = res.json.bind(res);
+    res.json = (body?: any) => json(body && typeof body === 'object' && !Array.isArray(body) && meter.usage.calls > 0 ? { ...body, usage: { ...meter.usage } } : body);
+    res.on('finish', () => {
+      const userId = (req as AuthenticatedRequest).user?.id;
+      if (!userId || meter.usage.calls === 0) return;
+      const entry = { userId, kind: typeof kind === 'function' ? kind(req) : kind, provider: meter.provider, model: meter.model, usage: { ...meter.usage }, status: res.statusCode < 400 ? 'success' as const : 'error' as const };
+      void (async () => {
+        if ((await getSecuritySettings()).aiUsageTracking) await recordAiUsage(entry);
+      })().catch((err) => logger.error({ err }, 'AI usage row lost'));
+    });
+    runWithAiUsageMeter(meter, next);
+  };
 }
 
 // Every `:id`-style path parameter in this API is a uuid column; a malformed one used to reach
@@ -1516,9 +1541,9 @@ app.post('/data-subject/erase', requirePermission(PERMISSIONS.DATA_SUBJECT_MANAG
 /** One run of the retention job (also the daily one): what it removed is logged and, when anything was, written to the audit log. */
 async function runRetentionNow(by?: { id: string; label: string }): Promise<Awaited<ReturnType<typeof purgeExpiredData>>> {
   const r = await purgeExpiredData({ deleteAsset: deleteLibraryAsset, write: { actor: { type: by ? 'user' : 'system', id: by?.id ?? 'retention' } } });
-  if (r.classes.length || r.mailDeleted) {
-    logger.info({ classes: r.classes, mailDeleted: r.mailDeleted }, 'retention: old data removed');
-    void insertAuditSafe({ actor: { type: by ? 'user' : 'system', id: by?.id ?? 'retention', label: by?.label ?? 'Retention job' }, action: 'retention.purge', targetType: 'retention', after: { classes: r.classes, mailDeleted: r.mailDeleted } },
+  if (r.classes.length || r.mailDeleted || r.aiUsageDeleted || r.aiGeneratedDeleted) {
+    logger.info({ classes: r.classes, mailDeleted: r.mailDeleted, aiUsageDeleted: r.aiUsageDeleted, aiGeneratedDeleted: r.aiGeneratedDeleted }, 'retention: old data removed');
+    void insertAuditSafe({ actor: { type: by ? 'user' : 'system', id: by?.id ?? 'retention', label: by?.label ?? 'Retention job' }, action: 'retention.purge', targetType: 'retention', after: { classes: r.classes, mailDeleted: r.mailDeleted, aiUsageDeleted: r.aiUsageDeleted, aiGeneratedDeleted: r.aiGeneratedDeleted } },
       (err) => logger.error({ err }, 'audit: retention row lost'));
   }
   return r;
@@ -2577,6 +2602,7 @@ app.get(
 app.post(
   '/whoobe-one/pages/:id/translate',
   requireAnyPermission(PERMISSIONS.PAGES_EDIT, PERMISSIONS.OBJECTS_WRITE),
+  aiMetered('page-translation'),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { locale } = req.body ?? {};
     if (typeof locale !== 'string' || !locale.trim()) {
@@ -6623,7 +6649,7 @@ app.put('/ai/settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE), async (r
 // settings, calls the configured provider, structurally validates the
 // returned Element tree (snippet/page) or returns the plain text (text),
 // and logs the whole exchange into whoobe_ai_generated.
-app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLimit, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+app.post('/ai/generate', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLimit, aiMetered((req) => String(req.body?.kind)), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const { kind, prompt, context } = req.body ?? {};
   if (kind !== 'snippet' && kind !== 'page' && kind !== 'text') {
     res.status(400).json({ error: 'kind must be "snippet", "page", or "text"' });
@@ -6722,9 +6748,113 @@ app.get('/ai/generated', requirePermission(PERMISSIONS.OBJECTS_READ), async (_re
   }
 });
 
+// ── AI usage (docs/plans/ai/ai-usage-plan.md): tokens per user, counts only ──────────────────────────────────────
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MONTH_RE = /^\d{4}-\d{2}$/;
+const AI_USAGE_MAX_DAYS = 366;
+
+/** `from`/`to` as days (YYYY-MM-DD, UTC, both included; default the last 30 days) into [from, to). */
+function parseUsageRange(req: Request, res: Response): { from: Date; to: Date } | null {
+  const q = req.query as Record<string, unknown>;
+  const today = new Date(new Date().toISOString().slice(0, 10));
+  const day = (v: unknown, fallback: Date): Date | null => {
+    if (v === undefined || v === '') return fallback;
+    if (typeof v !== 'string' || !DAY_RE.test(v) || Number.isNaN(Date.parse(v))) return null;
+    return new Date(v);
+  };
+  const from = day(q.from, new Date(today.getTime() - 29 * 86_400_000));
+  const last = day(q.to, today);
+  if (!from || !last) { res.status(400).json({ error: 'from and to must be days as YYYY-MM-DD' }); return null; }
+  const to = new Date(last.getTime() + 86_400_000);
+  if (to <= from || to.getTime() - from.getTime() > AI_USAGE_MAX_DAYS * 86_400_000) {
+    res.status(400).json({ error: `to must not be before from, and the range must be at most ${AI_USAGE_MAX_DAYS} days` });
+    return null;
+  }
+  return { from, to };
+}
+
+/** `from`/`to` as months (YYYY-MM, both included; default the last 12 months). */
+function parseUsageMonths(req: Request, res: Response): { fromMonth: string; toMonth: string } | null {
+  const q = req.query as Record<string, unknown>;
+  const now = new Date();
+  const back = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1));
+  const fromMonth = q.from === undefined || q.from === '' ? back.toISOString().slice(0, 7) : q.from;
+  const toMonth = q.to === undefined || q.to === '' ? now.toISOString().slice(0, 7) : q.to;
+  if (typeof fromMonth !== 'string' || typeof toMonth !== 'string' || !MONTH_RE.test(fromMonth) || !MONTH_RE.test(toMonth) || fromMonth > toMonth) {
+    res.status(400).json({ error: 'from and to must be months as YYYY-MM, from not after to' });
+    return null;
+  }
+  return { fromMonth, toMonth };
+}
+
+function parseUsageUser(req: Request, res: Response): string | undefined | null {
+  const v = (req.query as Record<string, unknown>).userId;
+  if (v === undefined || v === '') return undefined;
+  if (typeof v !== 'string' || !UUID_PARAM_RE.test(v)) { res.status(400).json({ error: 'userId must be a user id' }); return null; }
+  return v;
+}
+
+// The token usage of every user in a period (totals by user, function, model and day); with userId, that person's
+// requests one by one, which is written to the audit log (looking at one person's activity is the sensitive part).
+app.get('/ai/usage', requirePermission(PERMISSIONS.AI_USAGE_READ), async (req: Request, res: Response): Promise<void> => {
+  const range = parseUsageRange(req, res);
+  if (!range) return;
+  const userId = parseUsageUser(req, res);
+  if (userId === null) return;
+  try {
+    const { aiUsageTracking, aiUsageRetentionDays } = await getSecuritySettings();
+    const report = await getAiUsageReport({ ...range, userId });
+    if (userId) {
+      const u = (req as AuthenticatedRequest).user!;
+      const subject = report.byUser[0];
+      void insertAuditSafe({ actor: { type: 'user', id: u.id, label: u.email }, ip: req.ip, action: 'ai_usage.read_user', targetType: 'user', targetId: userId, targetLabel: subject?.email ?? userId,
+        after: { from: range.from.toISOString().slice(0, 10), to: new Date(range.to.getTime() - 86_400_000).toISOString().slice(0, 10), requests: report.total.requests } },
+        (err) => logger.error({ err }, 'audit: AI usage read row lost'));
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ tracking: aiUsageTracking, retentionDays: aiUsageRetentionDays, ...report });
+  } catch (error: any) {
+    logger.error({ err: error }, 'AI usage report error');
+    res.status(500).json({ error: 'Failed to read the AI usage' });
+  }
+});
+
+// The monthly totals (kept after the detail rows are deleted), per user, function and model.
+app.get('/ai/usage/monthly', requirePermission(PERMISSIONS.AI_USAGE_READ), async (req: Request, res: Response): Promise<void> => {
+  const months = parseUsageMonths(req, res);
+  if (!months) return;
+  const userId = parseUsageUser(req, res);
+  if (userId === null) return;
+  try {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ tracking: (await getSecuritySettings()).aiUsageTracking, ...months, rows: await getAiUsageMonthly({ ...months, userId }) });
+  } catch (error: any) {
+    logger.error({ err: error }, 'AI usage monthly error');
+    res.status(500).json({ error: 'Failed to read the AI usage' });
+  }
+});
+
+// What is recorded about the signed-in person: the same report for their own rows, and their monthly totals.
+app.get('/ai/usage/me', requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const range = parseUsageRange(req, res);
+  if (!range) return;
+  try {
+    const userId = (req as AuthenticatedRequest).user!.id;
+    const { aiUsageTracking, aiUsageRetentionDays } = await getSecuritySettings();
+    const now = new Date();
+    const fromMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1)).toISOString().slice(0, 7);
+    const report = await getAiUsageReport({ ...range, userId });
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ tracking: aiUsageTracking, retentionDays: aiUsageRetentionDays, ...report, monthly: await getAiUsageMonthly({ fromMonth, toMonth: now.toISOString().slice(0, 7), userId }) });
+  } catch (error: any) {
+    logger.error({ err: error }, 'AI usage (own) error');
+    res.status(500).json({ error: 'Failed to read the AI usage' });
+  }
+});
+
 // AI website structure generation — generates a complete website with pages
 // and snippets from a natural language prompt.
-app.post('/ai/generate-website-structure', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLimit, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+app.post('/ai/generate-website-structure', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLimit, aiMetered('website-structure'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const { prompt } = req.body ?? {};
   if (typeof prompt !== 'string' || !prompt.trim()) {
     res.status(400).json({ error: 'prompt is required' });
@@ -6930,7 +7060,7 @@ app.get('/whoobe-one/site-wizard/options', requireAnyPermission(PERMISSIONS.WEBS
 // The texts of the wizard written by the configured model (docs/plans/ai/template-wizard.md, phase 3). Body: `{ answers, description? }`. The model gets the name, the
 // sector, the context, a short description and the slots (key, what it is, length, placeholder) of THIS structure, and its reply is read slot by slot (cleanAiTexts):
 // only texts of real slots come back, cleaned and cut. Nothing is created here: the dashboard shows the texts and sends them with the answers to create the site.
-app.post('/ai/generate-wizard-texts', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLimit, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+app.post('/ai/generate-wizard-texts', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLimit, aiMetered('wizard-texts'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const { answers, description } = req.body ?? {};
   if (answers === null || typeof answers !== 'object' || Array.isArray(answers)) { res.status(400).json({ error: 'answers (an object) is required' }); return; }
   if (description !== undefined && (typeof description !== 'string' || description.length > 400)) { res.status(400).json({ error: 'description must be text of up to 400 characters' }); return; }
@@ -7252,7 +7382,7 @@ app.put('/ai/translate-settings', requirePermission(PERMISSIONS.SETTINGS_MANAGE)
   }
 });
 
-app.post('/ai/generate-image', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLimit, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+app.post('/ai/generate-image', requirePermission(PERMISSIONS.OBJECTS_WRITE), aiRateLimit, aiMetered('image'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { prompt, n, size, quality, style, folderPath } = req.body ?? {};
     if (!prompt) {

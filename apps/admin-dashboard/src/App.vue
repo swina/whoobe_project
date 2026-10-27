@@ -7,6 +7,7 @@
   <ResetPasswordView v-else-if="!authStore.currentUser && route.name === 'ResetPassword'" />
   <LoginView v-else-if="!authStore.currentUser" />
   <router-view v-else />
+  <AiUsageToast />
 </template>
 
 <script setup lang="ts">
@@ -14,6 +15,7 @@ import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from './stores/authStore'
 import SandboxBanner from './components/SandboxBanner.vue'
+import AiUsageToast from './components/AiUsageToast.vue'
 import LoginView from './views/LoginView.vue'
 import ForgotPasswordView from './views/ForgotPasswordView.vue'
 import ResetPasswordView from './views/ResetPasswordView.vue'

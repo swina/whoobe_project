@@ -43,6 +43,7 @@ export default defineConfig({
     './src/db/ai-image-settings-schema.ts',
     './src/db/ai-translate-settings-schema.ts',
     './src/db/ai-generated-schema.ts',
+    './src/db/ai-usage-schema.ts',
     './src/db/figma-settings-schema.ts',
     './src/db/pwa-subscriptions-schema.ts',
     './src/db/content-versions-schema.ts',

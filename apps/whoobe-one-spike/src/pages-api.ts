@@ -60,6 +60,7 @@ export interface WhoobeOnePage {
 }
 
 import { getDefaultCoreApiUrl } from './core-api-url'
+import { aiFetch } from './ai-usage'
 
 async function parseJsonOrThrow(res: Response): Promise<any> {
   if (!res.ok) {
@@ -215,7 +216,7 @@ export async function updatePage(
  *  as a new, unpublished page in the same translation group - a draft for
  *  a human editor to review before publishing, not a live swap. */
 export async function translatePage(id: string, locale: string): Promise<WhoobeOnePage> {
-  const res = await fetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}/translate`, {
+  const res = await aiFetch(`${getDefaultCoreApiUrl()}/whoobe-one/pages/${id}/translate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ locale }),

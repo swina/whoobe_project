@@ -1,5 +1,6 @@
 <template>
   <router-view />
+  <AiUsageToast />
 </template>
 
 <script setup lang="ts">
@@ -17,6 +18,7 @@ import { onMounted } from 'vue'
 import Element from './scripts/ElementsClass.js'
 import { useEditorStore } from './store/editor'
 import { setupHotkeys } from './scripts/hotkeys'
+import AiUsageToast from './components/AiUsageToast.vue'
 
 const editor = useEditorStore()
 

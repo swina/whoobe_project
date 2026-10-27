@@ -4666,6 +4666,45 @@ paths:
                 type: object
         "401":
           $ref: '#/components/responses/Unauthorized'
+  /ai/usage:
+    get:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Token usage of the AI functions per user in a period (`from`, `to` as YYYY-MM-DD, both included, default the last 30 days, at most 366): totals overall and by user, function, model and day; with `userId`, that person's requests one by one (at most 1000, newest first), and the reading is written to the audit log as `ai_usage.read_user`. Counts only, never prompts or answers. Rows exist only while the tracking is on (Settings > Security). Needs `ai_usage:read` (administrators)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /ai/usage/monthly:
+    get:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "Monthly token totals per user, function and model (`from`, `to` as YYYY-MM, default the last 12 months, optional `userId`); kept after the detail rows are deleted. Needs `ai_usage:read`."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /ai/usage/me:
+    get:
+      tags: ["core-api: AI: text, images, translation, whole-website generation"]
+      summary: "The token usage recorded about the signed-in person: the same report as `/ai/usage` for their own rows (`from`, `to`) and their monthly totals of the last 12 months. Any signed-in user."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: '#/components/responses/Unauthorized'
   /ai/generate-wizard-texts:
     post:
       tags: ["core-api: AI: text, images, translation, whole-website generation"]

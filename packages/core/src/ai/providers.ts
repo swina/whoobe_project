@@ -8,6 +8,7 @@ import OpenAI from 'openai';
 import { createSafeFetchAdapter } from '../http/safe-fetch.js';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { reportAiUsage } from './usage.js';
 
 export type AiProviderName = 'openai' | 'anthropic' | 'google' | 'zen' | 'openrouter' | 'custom';
 
@@ -185,6 +186,7 @@ async function generateOpenAi(input: AiGenerateInput, baseUrl?: string, provider
       { role: 'user', content: input.userPrompt },
     ],
   });
+  reportAiUsage(input.settings.provider, input.settings.model, completion.usage?.prompt_tokens, completion.usage?.completion_tokens);
   const rawText = completion.choices[0]?.message?.content ?? '';
   const truncated = completion.choices[0]?.finish_reason === 'length';
   return { json: input.raw ? extractPlainText(rawText) : parseJsonText(rawText, truncated), rawText };
@@ -202,6 +204,7 @@ async function generateAnthropic(input: AiGenerateInput): Promise<AiGenerateResu
     system: input.systemPrompt,
     messages: [{ role: 'user', content: input.userPrompt }],
   });
+  reportAiUsage(input.settings.provider, input.settings.model, message.usage?.input_tokens, message.usage?.output_tokens);
   const rawText = message.content
     .filter((block) => block.type === 'text')
     .map((block) => (block.type === 'text' ? block.text : ''))
@@ -217,6 +220,8 @@ async function generateGoogle(input: AiGenerateInput): Promise<AiGenerateResult>
     generationConfig: { maxOutputTokens: input.maxTokens ?? 4096 },
   });
   const result = await model.generateContent(input.userPrompt);
+  const usage = result.response.usageMetadata;
+  reportAiUsage(input.settings.provider, input.settings.model, usage?.promptTokenCount, usage?.candidatesTokenCount);
   const rawText = result.response.text();
   const truncated = result.response.candidates?.[0]?.finishReason === 'MAX_TOKENS';
   return { json: input.raw ? extractPlainText(rawText) : parseJsonText(rawText, truncated), rawText };

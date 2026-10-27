@@ -59,6 +59,9 @@ export const PERMISSIONS = {
 
   // Finding, exporting and erasing everything held about one person (docs/plans/system/data-subject-plan.md). Admin only.
   DATA_SUBJECT_MANAGE: 'data_subject:manage',
+
+  // Reading the token usage of the AI functions of every user (docs/plans/ai/ai-usage-plan.md). Read only. Admin only.
+  AI_USAGE_READ: 'ai_usage:read',
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

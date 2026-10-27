@@ -10,6 +10,12 @@ export interface SecuritySettings {
   passwordPolicy: PasswordPolicy;
   /** days after which a row of the mail log is deleted; null = keep */
   mailLogRetentionDays: number | null;
+  /** token usage of the AI functions recorded per user; off by default */
+  aiUsageTracking: boolean;
+  /** days after which a row of the AI usage is deleted (the monthly totals stay); null = keep */
+  aiUsageRetentionDays: number | null;
+  /** days after which a recorded AI generation (prompt and answer) is deleted; null = keep */
+  aiGeneratedRetentionDays: number | null;
   updatedAt: Date | null;
 }
 
@@ -17,6 +23,9 @@ export const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
   requireMfaRoleIds: [],
   passwordPolicy: DEFAULT_PASSWORD_POLICY,
   mailLogRetentionDays: null,
+  aiUsageTracking: false,
+  aiUsageRetentionDays: 90,
+  aiGeneratedRetentionDays: null,
   updatedAt: null,
 };
 
@@ -28,17 +37,24 @@ export async function getSecuritySettings(): Promise<SecuritySettings> {
     requireMfaRoleIds: row.requireMfaRoleIds,
     passwordPolicy: { minLength: row.passwordMinLength, requireClasses: row.passwordRequireClasses },
     mailLogRetentionDays: row.mailLogRetentionDays,
+    aiUsageTracking: row.aiUsageTracking,
+    aiUsageRetentionDays: row.aiUsageRetentionDays,
+    aiGeneratedRetentionDays: row.aiGeneratedRetentionDays,
     updatedAt: row.updatedAt,
   };
 }
 
-export type SecuritySettingsPatch = Partial<{ requireMfaRoleIds: string[]; passwordMinLength: number; passwordRequireClasses: boolean; mailLogRetentionDays: number | null }>;
+export type SecuritySettingsPatch = Partial<{ requireMfaRoleIds: string[]; passwordMinLength: number; passwordRequireClasses: boolean; mailLogRetentionDays: number | null;
+  aiUsageTracking: boolean; aiUsageRetentionDays: number | null; aiGeneratedRetentionDays: number | null }>;
 
 export type SecuritySettingsInput = {
   requireMfaRoleIds?: unknown;
   passwordMinLength?: unknown;
   passwordRequireClasses?: unknown;
   mailLogRetentionDays?: unknown;
+  aiUsageTracking?: unknown;
+  aiUsageRetentionDays?: unknown;
+  aiGeneratedRetentionDays?: unknown;
 };
 
 /** Validates a PUT body (only the keys present are changed). `error` names the first bad field. */
@@ -73,6 +89,17 @@ export async function parseSecuritySettingsInput(
     if (n === null) value.mailLogRetentionDays = null;
     else if (typeof n !== 'number' || !Number.isInteger(n) || n < 1 || n > 36500) return { ok: false, error: 'mailLogRetentionDays must be a whole number of days from 1 to 36500, or null to keep the log' };
     else value.mailLogRetentionDays = n;
+  }
+  if (body.aiUsageTracking !== undefined) {
+    if (typeof body.aiUsageTracking !== 'boolean') return { ok: false, error: 'aiUsageTracking must be true or false' };
+    value.aiUsageTracking = body.aiUsageTracking;
+  }
+  for (const key of ['aiUsageRetentionDays', 'aiGeneratedRetentionDays'] as const) {
+    const n = body[key];
+    if (n === undefined) continue;
+    if (n === null) value[key] = null;
+    else if (typeof n !== 'number' || !Number.isInteger(n) || n < 1 || n > 36500) return { ok: false, error: `${key} must be a whole number of days from 1 to 36500, or null to keep the rows` };
+    else value[key] = n;
   }
   return { ok: true, value };
 }

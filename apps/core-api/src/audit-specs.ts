@@ -62,6 +62,7 @@ const settingChange = (action: string, key: string, show: (v: unknown) => unknow
 // ── security settings (mandatory second factor, password policy) ──────────
 const securitySnapshot = (s: SecuritySettings) => ({
   requireMfaRoleIds: s.requireMfaRoleIds, policyMinLength: s.passwordPolicy.minLength, policyRequireClasses: s.passwordPolicy.requireClasses, mailLogRetentionDays: s.mailLogRetentionDays,
+  aiUsageTracking: s.aiUsageTracking, aiUsageRetentionDays: s.aiUsageRetentionDays, aiGeneratedRetentionDays: s.aiGeneratedRetentionDays,
 });
 
 // ── single sign-on settings (the client secret is never in a row: "changed") ──

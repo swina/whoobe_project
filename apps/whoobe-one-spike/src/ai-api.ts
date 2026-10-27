@@ -26,6 +26,7 @@ export class AiApiError extends Error {
 }
 
 import { getDefaultCoreApiUrl } from './core-api-url'
+import { aiFetch } from './ai-usage'
 
 async function parseJsonOrThrow(res: Response): Promise<any> {
   if (!res.ok) {
@@ -44,7 +45,7 @@ async function parseJsonOrThrow(res: Response): Promise<any> {
 /** Generates inline text content for a single element. Returns the
  *  generated text string, or throws AiApiError on failure. */
 export async function generateAiText(tag: string, existingContent: string | null, prompt: string, roleHint?: string | null): Promise<string> {
-  const res = await fetch(`${getDefaultCoreApiUrl()}/ai/generate`, {
+  const res = await aiFetch(`${getDefaultCoreApiUrl()}/ai/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -63,7 +64,7 @@ export async function generateAiText(tag: string, existingContent: string | null
  *  matching ElementsClass.js's Element shape, ready for
  *  cloneWithFreshIds() + insertion into the editor document. */
 export async function generateAi(kind: 'snippet' | 'page', prompt: string, context: AiGenerateContext = {}): Promise<unknown> {
-  const res = await fetch(`${getDefaultCoreApiUrl()}/ai/generate`, {
+  const res = await aiFetch(`${getDefaultCoreApiUrl()}/ai/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ kind, prompt, context }),
@@ -156,7 +157,7 @@ export async function generateImage(prompt: string, options?: {
   style?: string
   folderPath?: string
 }): Promise<{ images: { damUrl: string; assetId: string; revisedPrompt?: string }[] }> {
-  const res = await fetch(`${getDefaultCoreApiUrl()}/ai/generate-image`, {
+  const res = await aiFetch(`${getDefaultCoreApiUrl()}/ai/generate-image`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, ...options }),

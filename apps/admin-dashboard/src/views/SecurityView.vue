@@ -33,6 +33,7 @@
         <SecuritySettingsCard v-else-if="activeKey === 'sign-in'" />
         <OidcSettingsCard v-else-if="activeKey === 'sso'" />
         <DataSubjectCard v-else-if="activeKey === 'data-subject'" />
+        <AiUsageCard v-else-if="activeKey === 'ai-usage'" />
       </div>
     </div>
   </div>
@@ -48,6 +49,7 @@ import MfaSettingsCard from '../components/auth/MfaSettingsCard.vue'
 import SecuritySettingsCard from '../components/settings/SecuritySettingsCard.vue'
 import OidcSettingsCard from '../components/settings/OidcSettingsCard.vue'
 import DataSubjectCard from '../components/settings/DataSubjectCard.vue'
+import AiUsageCard from '../components/settings/AiUsageCard.vue'
 import SystemLogsView from './SystemLogsView.vue'
 import AuditLogView from './AuditLogView.vue'
 import UsersView from './UsersView.vue'

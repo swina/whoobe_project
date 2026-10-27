@@ -28,7 +28,7 @@ export type SettingsSubSection = 'general' | 'dam' | 'classes' | 'workflows' | '
 
 // The Security section: who may sign in and what they may do (Roles/Users/Workspaces, two-factor, sign-in requirements, single sign-on),
 // what is held about people (data subject requests) and what happened (system logs, audit log).
-export type SecuritySubSection = 'access' | 'two-factor' | 'sign-in' | 'sso' | 'data-subject' | 'system-logs' | 'audit-log'
+export type SecuritySubSection = 'access' | 'two-factor' | 'sign-in' | 'sso' | 'data-subject' | 'ai-usage' | 'system-logs' | 'audit-log'
 
 export interface MainTab {
   id: string
