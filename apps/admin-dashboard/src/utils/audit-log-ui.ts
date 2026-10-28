@@ -12,6 +12,9 @@ export const ACTION_CHOICES: { value: string; label: string }[] = [
   { value: 'migration_source.', label: 'Migration sources' },
   { value: 'object_event_subscription.', label: 'Object event subscriptions' },
   { value: 'audit.', label: 'The log itself (retention)' },
+  { value: 'auth.', label: 'Failed sign-ins and second factors' },
+  { value: 'access.', label: 'Refused permissions' },
+  { value: 'api_client.', label: 'Refused API clients' },
 ]
 
 /** `user.reset_password` -> "User: reset password". */
@@ -22,15 +25,16 @@ export function actionLabel(action: string): string {
   return `${name.charAt(0).toUpperCase()}${name.slice(1)}: ${verb || '-'}`
 }
 
-/** A tone for the badge: removals red, creations green, everything else neutral. */
+/** A tone for the badge: removals and failed or refused attempts red, creations green, everything else neutral. */
 export function actionTone(action: string): 'create' | 'delete' | 'change' {
-  if (/(^|[._])(delete|remove|clear|purge|cancel)/.test(action)) return 'delete'
+  if (/(^|[._])(delete|remove|clear|purge|cancel|failed|refused)/.test(action)) return 'delete'
   if (/(^|[._])(create|import)/.test(action)) return 'create'
   return 'change'
 }
 
 export function actorText(e: Pick<AuditEntry, 'actorType' | 'actorLabel' | 'actorId'>): string {
   if (e.actorType === 'system') return e.actorLabel ? `system (${e.actorLabel})` : 'system'
+  if (e.actorType === 'anonymous') return 'not signed in'
   return e.actorLabel || e.actorId || 'unknown'
 }
 

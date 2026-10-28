@@ -6,6 +6,8 @@ import { GATEWAY_PORT } from './config.js';
 import { logger } from './log-error.js';
 import { requestIdMiddleware } from '@whoobe-cms/logger';
 import { startObjectEventWorker } from './object-event-worker.js';
+// registers the audit row for a permission refused on the gateway's administration routes
+import './audit-failures.js';
 
 const app: Express = express();
 const port = GATEWAY_PORT;

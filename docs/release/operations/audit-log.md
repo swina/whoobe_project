@@ -8,13 +8,14 @@ question ("who gave this role that permission, and when?") without searching the
 
 ## 1. What is recorded
 
-One row per action that **succeeded**. A request that was refused (no permission, no session), failed (validation, conflict, server error) or
-changed nothing (deleting something that is not there, a dry run of an import) leaves no row.
+One row per action that **succeeded**, and one per **failed attempt** of the kinds listed in "Failed attempts" below. Any other request that was
+refused (no session), failed (validation, conflict, server error) or changed nothing (deleting something that is not there, a dry run of an
+import) leaves no row.
 
 | Column | Content |
 |---|---|
 | `at` | server time, UTC |
-| `actor_type`, `actor_id`, `actor_label` | `user`, the user's id and the e-mail **at that moment** (the row stays readable after the user is deleted); `system` when there is no session |
+| `actor_type`, `actor_id`, `actor_label` | `user`, the user's id and the e-mail **at that moment** (the row stays readable after the user is deleted); `system` when there is no session; `api-client` with the client's id and name; `anonymous` for a failed attempt by someone not signed in |
 | `ip` | the client address as the application sees it; behind a reverse proxy set `TRUST_PROXY` (see the [configuration reference](configuration-reference.md)) |
 | `action` | a stable name, `area.verb` (below) |
 | `target_type`, `target_id`, `target_label` | what was changed and a readable name at that moment |
@@ -36,14 +37,27 @@ changed nothing (deleting something that is not there, a dry run of an import) l
 | Integrations | `migration_source.create`, `.update`, `.delete`, `.import_classes`, `.import_objects`, `.import_documents`, `.promote_documents`, `.extract_components`; `object_event_subscription.create`, `.update`, `.delete` |
 | The log itself | `audit.purge` (written by the retention job with the number of rows removed) |
 
+### Failed attempts
+
+| Action | When | Recorded |
+|---|---|---|
+| `auth.login_failed` | a sign-in with a password refused | `reason`: `unknown_user` (no target: the e-mail typed is **not** written, it may be a password typed in the wrong field), `inactive`, `wrong_password`, `locked_out` (the address or the account is waiting after too many failures), `single_sign_on_required`; the account as target when it exists |
+| `auth.mfa_failed` | a wrong second-factor code | `step` (`challenge` at sign-in, `enrol` when the role requires it, `setup` and `disable` by the signed-in user) and `reason` (`wrong_code`, `wrong_recovery_code`, `wrong_password` to turn it off, `locked_out`); the account as target |
+| `access.permission_refused` | a signed-in user called a route without its permission (core-api and the Gateway's administration) | the user as actor; `method`, `route` (the pattern, never the URL with its values), `permission` (and `accepted` when several would do; `service: gateway` for the Gateway) |
+| `api_client.refused` | an application was refused at the Gateway's `/client/v1` before calling anything | `reason` (`unknown`, `revoked`, `expired`, `suspended`, `malformed`, a token's reason such as `expired` or `signature`, `address not allowed`, `key sent by a browser`, `locked_out`) and `presented` (what was sent: `key`, `jwt`, `none`); the client as actor when the credential named one |
+
+No password, code, key or token is ever written. Someone trying passwords decides how many failures there are, so the rows are **throttled: at
+most 10 a minute per address and action**; the rest of that minute is dropped and the service writes one warning line (`audit: more than 10
+failed attempts in a minute from this address...`). The counts are per process and start again after a restart. A refusal that answers 404 on
+purpose (an API client asking for a class or a folder outside its scopes, so that it cannot learn what exists) is in the gateway log, not here.
+
 ### What is deliberately not audited
 
 - **Content editing** (pages, snippets, kits, templates, themes' CSS): the editor keeps a version history of who saved what.
 - **Data**: objects and classes have object events and the record's own history.
-- **Personal actions**: signing in and out, the second factor, a user's own AI provider key.
+- **Personal actions**: a successful sign-in or sign-out, turning the second factor on, a user's own AI provider key (failed sign-ins and codes are
+  audited, above).
 - **Operations that change no configuration**: AI generation, mail tests and log clean-up, search reindex, delivery retries.
-- **Failed attempts**: they belong to a login log with another volume and retention; the application counts them for the lockout and logs failed
-  logins (see [observability and logging](observability-and-logging.md)).
 
 ### Secrets
 
@@ -86,7 +100,7 @@ There is **no route that writes, changes or deletes a row.**
 
 ## 4. Limits
 
-- Successful actions only (section 1).
+- Successful actions, and the failed attempts listed in section 1; a missing session (401) is not written.
 - Administration of the Gateway (API clients, keys, endpoints, routes) is not in this log yet; it is written by another service and comes in a later step.
 - No hash chain or external anchoring; no export to a SIEM (use the CSV export on a schedule).
 - One log per workspace, like everything else; a deleted workspace takes its log with it.

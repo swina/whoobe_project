@@ -4,7 +4,7 @@ import { getDefaultCoreApiUrl } from './auth-api'
 export interface AuditEntry {
   id: string
   at: string
-  actorType: 'user' | 'api-client' | 'system'
+  actorType: 'user' | 'api-client' | 'system' | 'anonymous'
   actorId: string | null
   actorLabel: string | null
   ip: string | null

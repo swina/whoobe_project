@@ -5,6 +5,18 @@ export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
 }
 
+type PermissionRefusedListener = (req: AuthenticatedRequest, user: AuthenticatedUser, permissionKeys: readonly string[]) => void;
+let permissionRefused: PermissionRefusedListener | null = null;
+
+/** Called when a signed-in user is refused for a missing permission (the service writes it to the audit log). One listener per process. */
+export function onPermissionRefused(listener: PermissionRefusedListener | null): void {
+  permissionRefused = listener;
+}
+
+function notifyRefused(req: AuthenticatedRequest, user: AuthenticatedUser, permissionKeys: readonly string[]): void {
+  try { permissionRefused?.(req, user, permissionKeys); } catch (err) { console.error('permission refused listener error:', err); }
+}
+
 /** Rejects unless a valid, non-expired, non-revoked session is present. */
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -45,6 +57,7 @@ export function requirePermission(permissionKey: string) {
         return;
       }
       if (!user.permissions.includes(permissionKey)) {
+        notifyRefused(req, user, [permissionKey]);
         res.status(403).json({ error: `Missing permission: ${permissionKey}` });
         return;
       }
@@ -77,6 +90,7 @@ export function requireAnyPermission(...permissionKeys: string[]) {
         return;
       }
       if (!permissionKeys.some((k) => user.permissions.includes(k))) {
+        notifyRefused(req, user, permissionKeys);
         res.status(403).json({ error: `Missing permission: ${permissionKeys[0]}` });
         return;
       }

@@ -1,7 +1,8 @@
 // Pure helpers of the audit log (docs/plans/system/audit-log-plan.md): what may be written, and in what shape. No database here.
 
 export interface AuditActor {
-  type: 'user' | 'api-client' | 'system';
+  /** `anonymous`: a failed attempt by someone not signed in (a sign-in, a second factor before the session). */
+  type: 'user' | 'api-client' | 'system' | 'anonymous';
   id?: string | null;
   /** The e-mail or client name at that moment. */
   label?: string | null;
@@ -100,4 +101,36 @@ export function csvCell(value: unknown): string {
   let s = value === null || value === undefined ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
   if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return `"${s.replace(/"/g, '""')}"`;
+}
+
+/**
+ * Failed attempts (a refused sign-in, a wrong second factor, a refused permission or API client) are written like any other row, but an
+ * attacker decides how many there are: past `max` rows per address and action in `windowMs`, the rest of the window is dropped and
+ * `onThrottled` is called once, so the service can log that rows were left out.
+ */
+export function createFailedAttemptRecorder(opts: {
+  write: (entry: AuditEntry) => void;
+  onThrottled?: (key: { ip: string; action: string }) => void;
+  max?: number;
+  windowMs?: number;
+  maxKeys?: number;
+}): (entry: AuditEntry, now?: number) => void {
+  const { write, onThrottled, max = 10, windowMs = 60_000, maxKeys = 10_000 } = opts;
+  const windows = new Map<string, { count: number; start: number }>();
+  return (entry, now = Date.now()) => {
+    const ip = entry.ip ?? 'unknown';
+    const key = `${ip}|${entry.action}`;
+    let w = windows.get(key);
+    if (!w || now - w.start > windowMs) {
+      if (!w && windows.size >= maxKeys) {
+        for (const [k, v] of windows) if (now - v.start > windowMs) windows.delete(k);
+        while (windows.size >= maxKeys) { const oldest = windows.keys().next().value; if (oldest === undefined) break; windows.delete(oldest); }
+      }
+      w = { count: 0, start: now };
+      windows.set(key, w);
+    }
+    w.count += 1;
+    if (w.count <= max) write(entry);
+    else if (w.count === max + 1) onThrottled?.({ ip, action: entry.action });
+  };
 }
