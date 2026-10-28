@@ -6,6 +6,7 @@ import roll, { type RollStream } from 'pino-roll'
 import type { LoggerConfig, LogLevel } from './types.js'
 import { uploadRotatedLog } from './dam-upload.js'
 import { resolveLogDir } from './paths.js'
+import { currentRequestId } from './request-context.js'
 
 const LOG_DIR = resolveLogDir()
 const LOG_LEVEL: LogLevel = (process.env.LOG_LEVEL as LogLevel) ?? 'info'
@@ -85,6 +86,11 @@ export async function initLogger(appName: string, config: LoggerConfig = {}): Pr
       ...(process.env.WHOOBE_WORKSPACE ? { base: { pid: process.pid, hostname: hostname(), workspace: process.env.WHOOBE_WORKSPACE } } : {}),
       level,
       redact,
+      // every line written while serving a request carries its correlation id
+      mixin() {
+        const requestId = currentRequestId()
+        return requestId ? { requestId } : {}
+      },
       timestamp: pino.stdTimeFunctions.isoTime,
       formatters: {
         level(label) {

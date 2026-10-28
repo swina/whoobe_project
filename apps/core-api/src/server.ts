@@ -400,7 +400,7 @@ import { runClassMigration, previewClassMigration, runObjectMigration, runDocume
 import { fetchAndConvert } from '@whoobe-cms/figma-converter';
 
 
-import { createLogger, resolveLogDir, attachLoggingToggle } from '@whoobe-cms/logger';
+import { createLogger, resolveLogDir, attachLoggingToggle, requestIdMiddleware, withRequestId } from '@whoobe-cms/logger';
 
 const logger = await createLogger('core-api', {
   file: true,
@@ -467,6 +467,8 @@ const isProduction = process.env.NODE_ENV === 'production';
 // 100kb default is too small once a request/response body can contain
 // base64 image data (e.g. a snippet/page/mail-template with several
 // embedded images, or its own base64-image render option).
+// The correlation id (release-0.4-plan.md 3.1) first, so every log line, audit row and call to another service carries it.
+app.use(requestIdMiddleware());
 app.use(express.json({ limit: '25mb' }));
 app.use(cookieParser());
 // Public sandbox: features that reach outside the stack or run builds answer 403 (packages/core/src/sandbox.ts).
@@ -1440,7 +1442,7 @@ async function deleteLibraryAsset(assetId: string): Promise<void> {
   if (!DAM_SERVICE_TOKEN) throw new Error('DAM_SERVICE_TOKEN is not set: core-api cannot ask the asset service to delete files');
   const res = await fetch(`${ASSET_PROCESSOR_URL}/api/v1/dam/asset`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DAM_SERVICE_TOKEN}` },
+    headers: withRequestId({ 'Content-Type': 'application/json', Authorization: `Bearer ${DAM_SERVICE_TOKEN}` }),
     body: JSON.stringify({ pimcorePath: asset.pimcorePath }),
   });
   if (!res.ok) throw new Error(`the asset service answered ${res.status}`);
@@ -5918,7 +5920,7 @@ async function attachSubmittedUploads(attributes: Record<string, unknown>, dataC
     for (const row of rows) {
       const r = await fetch(`${ASSET_PROCESSOR_URL}/api/v1/dam/form-uploads/attach`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(DAM_SERVICE_TOKEN ? { Authorization: `Bearer ${DAM_SERVICE_TOKEN}` } : {}) },
+        headers: withRequestId({ 'Content-Type': 'application/json', ...(DAM_SERVICE_TOKEN ? { Authorization: `Bearer ${DAM_SERVICE_TOKEN}` } : {}) }),
         body: JSON.stringify({ uploadId: row.id, websiteId: website.id, formRef: field.fieldId, targetFolder: limits.targetFolder, allowPublicFolder: limits.allowPublicFolder }),
       });
       const body: any = await r.json().catch(() => ({}));
@@ -7924,7 +7926,7 @@ app.get('/api/v1/system/logs/download', requireAuth, async (req: Request, res: R
     if (DAM_SERVICE_TOKEN) {
       headers['Authorization'] = `Bearer ${DAM_SERVICE_TOKEN}`
     }
-    const upstream = await fetch(url, { headers })
+    const upstream = await fetch(url, { headers: withRequestId(headers) })
     if (!upstream.ok) {
       res.status(502).json({ error: 'Failed to fetch log content from storage' })
       return

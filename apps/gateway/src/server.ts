@@ -4,10 +4,15 @@ import { corsPolicy, securityHeaders, parseTrustProxy } from '@whoobe-cms/core/s
 import { createRouter } from './router.js';
 import { GATEWAY_PORT } from './config.js';
 import { logger } from './log-error.js';
+import { requestIdMiddleware } from '@whoobe-cms/logger';
 import { startObjectEventWorker } from './object-event-worker.js';
 
 const app: Express = express();
 const port = GATEWAY_PORT;
+
+// The correlation id (release-0.4-plan.md 3.1) first: log lines, audit rows and the calls to core-api, the asset
+// service and the operator's upstreams (proxy-engine.ts) carry it.
+app.use(requestIdMiddleware());
 
 // Default (100kb) is far too small for POST /routes/:id/execute once a
 // caller's requestBody embeds base64 image data (BrevoCampaignModal.vue's

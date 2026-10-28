@@ -13,6 +13,7 @@ operators building monitoring and for security officers asking about audit trail
 | Central copy | on rotation the file is uploaded to the asset store under `private/logs/<app>/<yyyy-mm>/` (needs `DAM_SERVICE_TOKEN`); the dashboard's **System logs** viewer reads the fresh local files and the uploaded ones |
 | Retention | none enforced: rotated files stay in the bucket; local files stay in the container's log directory (lost with the container unless `LOG_DIR` is mounted) |
 | Redaction | `req.headers.authorization`, `req.headers.cookie`, `headers.*` equivalents, `config.apiKey`, `config.apiSecret`, `config.password`, `config.token` |
+| Correlation id | every request has one id, in the `X-Request-Id` header and in the `requestId` field of every log line written while serving it (section 5) |
 | Reverse proxy | nginx access and error logs on the host are separate and not managed by Whoobe |
 | Dashboard | **System logs** (read, filter, download) with dates on every line; **Settings > Mail > Log** (every outgoing mail with status and body) |
 
@@ -90,10 +91,27 @@ Not provided: OpenTelemetry instrumentation, request tracing, built-in alert rul
 
 The access log of the proxy shows the route and status; the service log at `debug` shows more (switch it on, reproduce,
 switch it off: debug logs may contain form values and addresses). Error responses in production carry a generic message;
-the real cause is in the log line written by the handler (`logger.error({ err }, '<operation> error')`). 
+the real cause is in the log line written by the handler (`logger.error({ err }, '<operation> error')`).
+
+**Follow one request with its id.** nginx passes on the client's `X-Request-Id` when it is 8 to 100 characters of
+`A-Z a-z 0-9 . _ : -`, otherwise sets its own (`$request_id`, 32 hex). core-api, the gateway and the asset processor do the
+same check (a request that reaches them without nginx gets a UUID), send the id back in the `X-Request-Id` response header,
+add it as `requestId` to every log line written while serving the request, write it in the audit row (`request_id`) and pass
+it on when they call each other: core-api to the asset processor, the gateway to core-api, to the asset processor and to the
+endpoints an administrator configured. So the id a user reads in the browser's network tab (or that a client sends) finds
+the lines of all the services and the audit row:
+
+```bash
+docker compose logs core-api gateway asset-processor | grep '"requestId":"<id>"'
+```
+
+The publish runner is not called by core-api: it pulls jobs. Its trail is the job id, which core-api's lines about the job
+(with the `requestId` of the request that queued it) and the job log share. Lines written outside a request (startup, the
+retention job, the object-event worker) have no `requestId`. To have the id in nginx's own access log, add `$request_id`
+(or `$http_x_request_id`) to the `log_format` of the host's `http {}` block.
 
 ## 6. Gaps
 
 The audit log covers successful administrative actions only (no failed attempts, no Gateway administration, no tamper evidence beyond the database rule); no tracing, no metrics for asset-processor and gateway, readiness only for core-api (and only the database, not the object store), no log retention
-policy, no tamper protection of logs, no per-request correlation id. Each is an item for the roadmap of a regulated
+policy, no tamper protection of logs. Each is an item for the roadmap of a regulated
 deployment; the workarounds above cover the common questions.

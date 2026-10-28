@@ -1,4 +1,5 @@
 import { safeFetch } from '@whoobe-cms/core/server';
+import { withRequestId } from '@whoobe-cms/logger';
 import { GATEWAY_PROXY_TIMEOUT_MS } from './config.js';
 
 export interface ProxyResult {
@@ -26,7 +27,7 @@ export async function proxyFetch(
   try {
     const init = {
       method,
-      headers,
+      headers: withRequestId(headers),
       body: isGetHead ? undefined : (body !== undefined ? JSON.stringify(body) : undefined),
       signal: controller.signal,
     };

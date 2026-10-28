@@ -6,6 +6,7 @@ export { listLogFiles, downloadLogFile } from './dam-upload.js'
 export { createBrowserLogger } from './browser-logger.js'
 export { resolveLogDir } from './paths.js'
 export { attachLoggingToggle } from './log-toggle.js'
+export { REQUEST_ID_HEADER, currentRequestId, isValidRequestId, requestIdMiddleware, runWithRequestId, withRequestId } from './request-context.js'
 
 export async function createLogger(appName: string, config: LoggerConfig = {}) {
   const logger = await initLogger(appName, config)
