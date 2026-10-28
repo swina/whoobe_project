@@ -3,6 +3,7 @@ import { createFailureLock } from '@whoobe-cms/core/server';
 import type { ApiClientRecord } from '@whoobe-cms/core/server';
 import { limiter } from './limiter.js';
 import { logger, logGatewayError } from './log-error.js';
+import { withRequestId } from '@whoobe-cms/logger';
 import { callRoute } from './route-call.js';
 import { passedHeaders, queryOf } from './remote-router.js';
 import { resolveGatewayUrl } from './resolve-gateway-url.js';
@@ -296,7 +297,7 @@ export function createClientRouter(): Router {
       const key = found.asset.s3Key.split('/').map(encodeURIComponent).join('/');
       const token = process.env.DAM_SERVICE_TOKEN;
       const upstream = await fetch(`${GATEWAY_ASSET_PROCESSOR_URL}/dam-asset/${key}`, {
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(typeof req.headers.range === 'string' ? { Range: req.headers.range } : {}) },
+        headers: withRequestId({ ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(typeof req.headers.range === 'string' ? { Range: req.headers.range } : {}) }),
         signal: abort.signal,
       });
       if (upstream.status === 416) { res.status(416).end(); return; }

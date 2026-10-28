@@ -19,7 +19,7 @@ changed nothing (deleting something that is not there, a dry run of an import) l
 | `action` | a stable name, `area.verb` (below) |
 | `target_type`, `target_id`, `target_label` | what was changed and a readable name at that moment |
 | `before`, `after` | the fields that **changed**, on an allow-list per kind of object. A create has only `after`, a delete only `before` |
-| `request_id` | the `X-Request-Id` header of the request, when the proxy sets one |
+| `request_id` | the correlation id of the request (`X-Request-Id`, set by nginx or by the service): the same id is in the log lines of every service that served it ([observability](observability-and-logging.md) section 5) |
 
 ### What is audited
 

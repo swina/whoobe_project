@@ -75,7 +75,7 @@ import {
   markFormUploadAttached,
   expireStaleFormUploads,
 } from '@whoobe-cms/core/server';
-import { createLogger, attachLoggingToggle } from '@whoobe-cms/logger';
+import { createLogger, attachLoggingToggle, requestIdMiddleware } from '@whoobe-cms/logger';
 
 const logger = await createLogger('asset-processor', {
   file: true,
@@ -284,6 +284,8 @@ async function assetQuotaExceeded(pimcorePath: string): Promise<boolean> {
   return (await countAssets()) >= max;
 }
 
+// The correlation id (release-0.4-plan.md 3.1) first: core-api and the gateway pass theirs on, anything else gets one here.
+app.use(requestIdMiddleware());
 const jsonBody = express.json({ limit: isSandbox() ? '1mb' : '50mb' });
 // The bytes of a form upload are read from the raw stream by their own route (with their own cap), never parsed as JSON
 app.use((req: Request, res: Response, next: NextFunction): void => (req.path.startsWith(`${FORM_UPLOAD_PUT_PATH}/`) ? next() : jsonBody(req, res, next)));

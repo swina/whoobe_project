@@ -18,6 +18,14 @@
 # Optional server-level limits (empty by default; the public sandbox sets WS_EDGE_LIMITS, see scripts/sandbox/reset.sh)
 __EDGE_LIMITS__
 
+# Correlation id (docs/plans/system/release-0.4-plan.md 3.1): the client's X-Request-Id when it is a plausible one,
+# else nginx's own $request_id (32 hex). Every proxied location below passes it on; the services keep it, put it in
+# their log lines and audit rows and send it back in the response.
+set $whoobe_request_id $request_id;
+if ($http_x_request_id ~ "^[A-Za-z0-9._:-]{8,100}$") {
+    set $whoobe_request_id $http_x_request_id;
+}
+
 # Request body cap for the WHOLE server: nginx's own default is 1 MB, which applies to every location without a
 # directive of its own and answered 413 to any JSON body above 1 MB sent to core-api (a website import, a large
 # page, an AI-generated page, a kit) - only the asset upload location below used to set it. The applications have
@@ -37,6 +45,7 @@ location = /_whoobe_site_root {
     proxy_set_header Content-Length "";
     proxy_set_header Host $host;
     proxy_set_header X-Original-URI $request_uri;
+    proxy_set_header X-Request-Id $whoobe_request_id;
     proxy_intercept_errors on;
     error_page 500 502 503 504 = @whoobe_not_a_site;
 }
@@ -52,6 +61,7 @@ location /assets/ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 location / {
@@ -63,6 +73,7 @@ location / {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 # Admin dashboard (Vue SPA)
@@ -72,6 +83,7 @@ location @whoobe_dashboard {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 # /whoobe-one API routes -> core-api (must be before the SPA catch-all)
@@ -81,6 +93,7 @@ location ~ ^/whoobe-one/(websites|themes|pages|snippets|templates|kits|website-p
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 # Whoobe One editor (embedded in admin dashboard, direct access)
@@ -101,6 +114,7 @@ location /whoobe-one/ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 # Bytes of a file a visitor uploads through a form (docs/plans/forms/form-upload-plan.md): to the asset service, not core-api, which
@@ -112,6 +126,7 @@ location ^~ /public/upload-data/ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 # Names the dashboard router and core-api share (/documents, /pages, /settings): the browser asks for the page itself (opening the
@@ -127,6 +142,7 @@ location ~ ^/(documents|pages|settings)/?$ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 # core-api routes
@@ -136,6 +152,7 @@ location ~ ^/(auth|documents|snippets|data-classes|data-components|data-objects|
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 # Publication from the dashboard (core-api queues the jobs; only the person's routes are exposed, never /publish/runner/*, which the
@@ -146,6 +163,7 @@ location ~ ^/(publish/jobs|api/v1/system)(/.*)?$ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 # gateway API routes (must come before the /api/v1/ block below)
@@ -155,6 +173,7 @@ location /api/v1/gateway/ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 # applications that call the gateway with an API key (apps/gateway/src/client-router.ts)
@@ -164,6 +183,7 @@ location /client/v1/ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 location /api/remote/ {
@@ -172,6 +192,7 @@ location /api/remote/ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 # asset-processor API routes
@@ -181,6 +202,7 @@ location /api/v1/ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 }
 
 # DAM public asset proxy
@@ -190,6 +212,7 @@ location /dam-asset/ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $whoobe_request_id;
 
     expires 1y;
     add_header Cache-Control "public, immutable";
