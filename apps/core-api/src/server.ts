@@ -189,6 +189,8 @@ import {
   oidcLandingUrl,
   OIDC_ERRORS,
   insertAuditSafe,
+  createFailedAttemptRecorder,
+  onPermissionRefused,
   pingDatabase,
   publishJobCounts,
   eventDeliveryCounts,
@@ -408,6 +410,32 @@ const logger = await createLogger('core-api', {
 });
 // Audit log of administrative actions (docs/plans/system/audit-log-plan.md): `audited(AUDIT.<name>)` in a route's middleware list.
 const { audited } = createAudit(logger);
+
+// Failed attempts in the audit log (release-0.4-plan.md 3.1): a refused sign-in, a wrong second factor, a refused permission. No secret is
+// written (no password, no code, no e-mail typed for an account that does not exist); at most 10 rows a minute per address and action.
+const auditFailedAttempt = createFailedAttemptRecorder({
+  write: (entry) => void insertAuditSafe(entry, (err, e) => logger.error({ err, action: e.action }, 'audit: the failed attempt could not be written')),
+  onThrottled: ({ ip, action }) => logger.warn({ ip, action }, 'audit: more than 10 failed attempts in a minute from this address, the rest of the minute is not written'),
+});
+type FailedUser = { id: string; email: string };
+function auditFailure(req: Request, action: string, after: Record<string, unknown>, opts: { actor?: FailedUser; target?: FailedUser } = {}): void {
+  const rid = req.headers['x-request-id'];
+  auditFailedAttempt({
+    actor: opts.actor ? { type: 'user', id: opts.actor.id, label: opts.actor.email } : { type: 'anonymous' },
+    ip: req.ip ?? null,
+    action,
+    ...(opts.target ? { targetType: 'user', targetId: opts.target.id, targetLabel: opts.target.email } : {}),
+    after,
+    requestId: typeof rid === 'string' ? rid : null,
+  });
+}
+const loginFailed = (req: Request, reason: string, user?: FailedUser) => auditFailure(req, 'auth.login_failed', { reason }, { target: user });
+/** `step`: challenge and enrol happen before the session (anonymous actor); setup and disable are done by the signed-in user. */
+const mfaFailed = (req: Request, step: 'challenge' | 'enrol' | 'setup' | 'disable', reason: string, user: FailedUser) =>
+  auditFailure(req, 'auth.mfa_failed', { step, reason }, step === 'setup' || step === 'disable' ? { actor: user, target: user } : { target: user });
+onPermissionRefused((req, user, keys) => auditFailure(req, 'access.permission_refused',
+  { method: req.method, route: `${req.baseUrl}${req.route?.path ?? req.path}`, permission: keys[0], ...(keys.length > 1 ? { accepted: [...keys] } : {}) },
+  { actor: user }));
 
 /** Who made a write, for the object events: the signed-in user (a request without one, which no guarded route allows, is `system`). */
 function eventActorOf(req: Request): EventActor {
@@ -856,6 +884,7 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
 
   const rateLimitKey = email.toLowerCase();
   if (isLockedOut(rateLimitKey, req.ip)) {
+    loginFailed(req, 'locked_out');
     res.status(429).json({ error: 'Too many failed attempts. Try again later.' });
     return;
   }
@@ -866,6 +895,7 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
     if (!user) {
       logger.warn('Login failed: unknown user');
       recordFailedAttempt(rateLimitKey, req.ip);
+      loginFailed(req, 'unknown_user');
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }
@@ -873,6 +903,7 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
     if (!user.isActive) {
       logger.warn(`Login failed: user "${user.id}" is inactive`);
       recordFailedAttempt(rateLimitKey, req.ip);
+      loginFailed(req, 'inactive', user);
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }
@@ -881,6 +912,7 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
     if (!passwordOk) {
       logger.warn(`Login failed: wrong password for user "${user.id}"`);
       recordFailedAttempt(rateLimitKey, req.ip);
+      loginFailed(req, 'wrong_password', user);
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }
@@ -889,6 +921,7 @@ app.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
 
     // With single sign-on set to "administrators only", the password form is the break-glass of those who can manage users.
     if ((await getOidcSettings()).localLogin === 'admins' && !(await getEffectivePermissions(user.id)).includes(PERMISSIONS.USERS_MANAGE)) {
+      loginFailed(req, 'single_sign_on_required', user);
       res.status(403).json({ error: 'Sign in with single sign-on' });
       return;
     }
@@ -936,6 +969,7 @@ app.post('/auth/mfa/challenge', async (req: Request, res: Response): Promise<voi
     }
 
     if (mfaCodeLock.isLocked(user.id)) {
+      mfaFailed(req, 'challenge', 'locked_out', user);
       res.status(429).json({ error: 'Too many failed attempts. Try again later.' });
       return;
     }
@@ -960,6 +994,7 @@ app.post('/auth/mfa/challenge', async (req: Request, res: Response): Promise<voi
 
     mfaCodeLock.fail(user.id);
     recordMfaFailure(mfaToken);
+    mfaFailed(req, 'challenge', typeof recoveryCode === 'string' && typeof code !== 'string' ? 'wrong_recovery_code' : 'wrong_code', user);
     res.status(401).json({ error: 'Invalid code' });
   } catch (error: any) {
     logger.error({ err: error }, 'MFA challenge error');
@@ -1006,11 +1041,12 @@ app.post('/auth/mfa/enrol/verify', async (req: Request, res: Response): Promise<
     return;
   }
   try {
+    const user = await findUserById(userId);
     if (mfaCodeLock.isLocked(userId)) {
+      if (user) mfaFailed(req, 'enrol', 'locked_out', user);
       res.status(429).json({ error: 'Too many failed attempts. Try again later.' });
       return;
     }
-    const user = await findUserById(userId);
     if (!user || !user.isActive || user.totpEnabledAt) {
       pendingMfaEnrolments.delete(enrolToken);
       res.status(401).json({ error: 'Enrolment expired - sign in again' });
@@ -1023,6 +1059,7 @@ app.post('/auth/mfa/enrol/verify', async (req: Request, res: Response): Promise<
     if (!verifyTotpToken(user.totpSecret, code) || !consumeTotpCode(user.id, code)) {
       mfaCodeLock.fail(user.id);
       recordMfaEnrolmentFailure(enrolToken);
+      mfaFailed(req, 'enrol', 'wrong_code', user);
       res.status(401).json({ error: 'Invalid code' });
       return;
     }
@@ -1076,6 +1113,7 @@ app.post('/auth/mfa/verify-setup', requireAuth, async (req: AuthenticatedRequest
       return;
     }
     if (!verifyTotpToken(user.totpSecret, code)) {
+      mfaFailed(req, 'setup', 'wrong_code', user);
       res.status(401).json({ error: 'Invalid code' });
       return;
     }
@@ -1098,12 +1136,14 @@ app.post('/auth/mfa/disable', requireAuth, async (req: AuthenticatedRequest, res
 
   try {
     if (mfaDisableLock.isLocked(req.user!.id)) {
+      mfaFailed(req, 'disable', 'locked_out', req.user!);
       res.status(429).json({ error: 'Too many failed attempts. Try again later.' });
       return;
     }
     const user = await findUserById(req.user!.id);
     if (!user || !(await verifyPassword(user.passwordHash, password))) {
       mfaDisableLock.fail(req.user!.id);
+      mfaFailed(req, 'disable', 'wrong_password', req.user!);
       res.status(401).json({ error: 'Invalid password' });
       return;
     }

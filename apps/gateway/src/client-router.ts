@@ -4,6 +4,7 @@ import type { ApiClientRecord } from '@whoobe-cms/core/server';
 import { limiter } from './limiter.js';
 import { logger, logGatewayError } from './log-error.js';
 import { withRequestId } from '@whoobe-cms/logger';
+import { auditClientRefused } from './audit-failures.js';
 import { callRoute } from './route-call.js';
 import { passedHeaders, queryOf } from './remote-router.js';
 import { resolveGatewayUrl } from './resolve-gateway-url.js';
@@ -53,7 +54,7 @@ const refuse = (res: Response, status: number, error: string, extra: Record<stri
 async function authenticate(req: ClientRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const ip = req.ip ?? 'unknown';
-    if (authFailures.isLocked(ip)) { refuse(res, 429, 'Too many failed attempts, try again later', { 'Retry-After': '60' }); return; }
+    if (authFailures.isLocked(ip)) { auditClientRefused(req, 'locked_out', presentedCredential(req)?.kind ?? 'none'); refuse(res, 429, 'Too many failed attempts, try again later', { 'Retry-After': '60' }); return; }
     const core = await import('@whoobe-cms/core/server');
     const cred = presentedCredential(req);
     let client: ApiClientRecord | null = null;
@@ -71,6 +72,7 @@ async function authenticate(req: ClientRequest, res: Response, next: NextFunctio
         // page or an app: refuse it (a script can leave the header out, which is why the address list exists; this stops the common mistake).
         if (req.headers.origin) {
           logger.warn({ clientId: client.id, client: client.name, origin: String(req.headers.origin).slice(0, 100) }, '[gateway] API key refused: sent by a browser');
+          auditClientRefused(req, 'key sent by a browser', 'key', client);
           refuse(res, 403, 'A key is for servers. A browser or an app must send a token of the identity provider');
           return;
         }
@@ -98,17 +100,20 @@ async function authenticate(req: ClientRequest, res: Response, next: NextFunctio
 
     if (!client && denied) {
       logger.info({ ip, reason: why }, '[gateway] valid token without access');
+      auditClientRefused(req, why, 'jwt');
       refuse(res, 403, 'This token does not give access');
       return;
     }
     if (!client) {
       authFailures.fail(ip);
       logger.info({ ip, reason: why, credential: cred?.kind ?? 'none' }, '[gateway] client credential refused');
+      auditClientRefused(req, why, cred?.kind ?? 'none');
       refuse(res, 401, 'Invalid or missing credential', { 'WWW-Authenticate': 'Bearer' });
       return;
     }
     if (!ipAllowed(ip, client.allowedIps)) {
       logger.info({ ip, clientId: client.id }, '[gateway] client address not allowed');
+      auditClientRefused(req, 'address not allowed', cred?.kind ?? 'none', client);
       refuse(res, 403, 'This credential cannot be used from this address');
       return;
     }

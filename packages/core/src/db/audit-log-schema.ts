@@ -6,7 +6,7 @@ import { pgTable, text, jsonb, uuid, timestamp, index } from 'drizzle-orm/pg-cor
 export const auditLog = pgTable('audit_log', {
   id: uuid('id').primaryKey().defaultRandom(),
   at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
-  /** 'user' | 'api-client' | 'system' */
+  /** 'user' | 'api-client' | 'system' | 'anonymous' */
   actorType: text('actor_type').notNull(),
   actorId: text('actor_id'),
   /** The e-mail (or client name) at that moment, so the row stays readable after the actor is deleted. */

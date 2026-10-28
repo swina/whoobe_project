@@ -25,7 +25,7 @@ set a size limit on the driver, and mount `LOG_DIR` if you rely on the local fil
 | Event | Where | Level |
 |---|---|---|
 | Failed login: unknown user, inactive user, wrong password (user id, not the password) | core-api log | warn |
-| Login lockout and MFA failures | the HTTP answer (429 / 401) in the proxy access log; **not** logged by the application | - |
+| Failed sign-ins, lockouts, wrong second-factor codes, refused permissions, refused API clients | the [audit log](audit-log.md) (`auth.login_failed`, `auth.mfa_failed`, `access.permission_refused`, `api_client.refused`; at most 10 rows a minute per address and action) | - |
 | Permission denied, missing or invalid session | `console.warn` from the auth guard (reaches Docker's stdout, **not** the rotated file or its DAM copy) and 401/403 in the access log | warn |
 | Form upload refused (upload id, website, reason) | asset-processor log | warn |
 | Form notification skipped (not an authored block, recipient limit) | core-api log | warn |
@@ -37,7 +37,7 @@ set a size limit on the driver, and mount `LOG_DIR` if you rely on the local fil
 
 **Administrative actions have an [audit log](audit-log.md)** (table `audit_log`, read with the permission `audit:read`): users and roles, websites,
 settings, publication, migration sources and object event subscriptions, with the actor, the address and the fields before and after, and no
-secrets. It records successful actions only; refused and failed attempts, the editing of content (version history) and the administration of the
+secrets, and the failed attempts listed in the row above. The editing of content (version history), a missing session and the administration of the
 Gateway are not in it. Evidence for those still comes from the nginx access log (method, path, status, address, but not the session user)
 and the application log.
 
@@ -112,6 +112,6 @@ retention job, the object-event worker) have no `requestId`. To have the id in n
 
 ## 6. Gaps
 
-The audit log covers successful administrative actions only (no failed attempts, no Gateway administration, no tamper evidence beyond the database rule); no tracing, no metrics for asset-processor and gateway, readiness only for core-api (and only the database, not the object store), no log retention
+The audit log covers successful administrative actions and failed sign-ins, codes, permissions and API clients (no Gateway administration, no tamper evidence beyond the database rule); no tracing, no metrics for asset-processor and gateway, readiness only for core-api (and only the database, not the object store), no log retention
 policy, no tamper protection of logs. Each is an item for the roadmap of a regulated
 deployment; the workarounds above cover the common questions.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { auditRetentionDays, changedOnly, csvCell, pickAllowed, redactForAudit, REDACTED, SECRET_CHANGED } from './audit-log.js';
+import { auditRetentionDays, changedOnly, createFailedAttemptRecorder, csvCell, pickAllowed, redactForAudit, REDACTED, SECRET_CHANGED } from './audit-log.js';
 
 describe('redactForAudit: the safety net behind the allow-lists', () => {
   it('hides a value whose key looks like a credential, at any depth, and keeps the rest', () => {
@@ -78,5 +78,33 @@ describe('csvCell', () => {
     expect(csvCell(null)).toBe('""');
     expect(csvCell('=HYPERLINK("http://evil")')).toBe(`"'=HYPERLINK(""http://evil"")"`);
     expect(csvCell('-2+3')).toBe(`"'-2+3"`);
+  });
+});
+
+describe('createFailedAttemptRecorder: an attacker cannot fill the table', () => {
+  const entry = (ip: string, action = 'auth.login_failed') => ({ actor: { type: 'anonymous' as const }, ip, action });
+
+  it('writes up to max rows per address and action in a window, then tells once and drops the rest', () => {
+    const written: string[] = [];
+    const throttled: string[] = [];
+    const record = createFailedAttemptRecorder({ write: (e) => written.push(`${e.ip}|${e.action}`), onThrottled: (k) => throttled.push(`${k.ip}|${k.action}`), max: 3, windowMs: 1000 });
+    for (let i = 0; i < 10; i++) record(entry('1.1.1.1'), 100 + i);
+    expect(written).toHaveLength(3);
+    expect(throttled).toEqual(['1.1.1.1|auth.login_failed']);
+    // another address and another action have their own count
+    record(entry('2.2.2.2'), 200);
+    record(entry('1.1.1.1', 'auth.mfa_failed'), 200);
+    expect(written).toHaveLength(5);
+    // a new window writes again
+    record(entry('1.1.1.1'), 1200);
+    expect(written).toHaveLength(6);
+    expect(throttled).toHaveLength(1);
+  });
+
+  it('keeps a bounded number of keys', () => {
+    let n = 0;
+    const record = createFailedAttemptRecorder({ write: () => { n++; }, max: 1, windowMs: 60_000, maxKeys: 5 });
+    for (let i = 0; i < 50; i++) record(entry(`10.0.0.${i}`), 1000);
+    expect(n).toBe(50);
   });
 });
