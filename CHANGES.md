@@ -1,3 +1,6 @@
+## Merge feat/gateway-admin-audit into master — 2026-10-29
+- Branch: `master`. Gateway administration audited (0.4, 3.1) merged locally after the security API suite passed (2390 passed, 2 skipped); not pushed. Item 3.1 is complete.
+
 ## Gateway administration in the audit log (0.4, item 3.1) — 2026-10-28
 - Branch: `feat/gateway-admin-audit`. Third item of `docs/plans/system/release-0.4-plan.md` 3.1.
 - `audited()` moved from `apps/core-api/src/audit.ts` to `packages/core/src/http/audited.ts` (exported by `@whoobe-cms/core/server`) so the gateway uses the same guard; core-api's `audit.ts` re-exports it.
