@@ -1,12 +1,12 @@
-// The audit guard (apps/core-api/src/audit.ts) and the specs (audit-specs.ts) without a database or a server: the inserts are captured.
+// The audit guard (packages/core/src/http/audited.ts, re-exported by apps/core-api/src/audit.ts) and the specs (audit-specs.ts) without a database or a server: the inserts are captured.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { EventEmitter } from 'node:events'
 
 const inserted: any[] = []
 let failInsert = false
-// the path the core-api resolves '@whoobe-cms/core/server' to, so that the guard under test gets the stand-in
-vi.mock('../../../packages/core/dist/server.js', async (orig) => ({
-  ...(await orig<typeof import('@whoobe-cms/core/server')>()),
+// the built module the guard (packages/core/src/http/audited.ts) imports insertAuditSafe from, so that the guard under test gets the stand-in
+vi.mock('../../../packages/core/dist/db/audit-log-records.js', async (orig) => ({
+  ...(await orig<Record<string, unknown>>()),
   insertAuditSafe: async (entry: any, onError: (e: unknown, x: any) => void) => {
     if (failInsert) { onError(new Error('db down'), entry); return }
     inserted.push(entry)

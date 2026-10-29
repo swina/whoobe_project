@@ -140,6 +140,7 @@ export * from './gateway/sanitize-public-content.js';
 export * from './env.js';
 export * from './http/security.js';
 export * from './http/rate-limit.js';
+export * from './http/audited.js';
 export * from './http/safe-fetch.js';
 export * from './dam/self-healing-client.js';
 export * from './portability/index.js';

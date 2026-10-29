@@ -1,3 +1,14 @@
+## Gateway administration in the audit log (0.4, item 3.1) — 2026-10-28
+- Branch: `feat/gateway-admin-audit`. Third item of `docs/plans/system/release-0.4-plan.md` 3.1.
+- `audited()` moved from `apps/core-api/src/audit.ts` to `packages/core/src/http/audited.ts` (exported by `@whoobe-cms/core/server`) so the gateway uses the same guard; core-api's `audit.ts` re-exports it.
+- New `apps/gateway/src/audit-specs.ts`, 15 specs on the gateway's administration routes: `gateway_endpoint.create` / `.update` / `.delete` (the names of the stored credentials, a new one "changed", the state after read again because the answer has no `authConfig`), `gateway_endpoint.import_openapi` (the spec's address without its query), `gateway_route.create` / `.update` / `.delete`, `gateway_route.test` / `.refresh_schema` / `.execute` (the upstream status only; an `execute` that never reached the upstream writes nothing), `api_client.create` / `.update` / `.delete`, `api_client.key_add` (id, prefix, label, expiry: never the key) and `.key_revoke`. Presets are read-only (no route changes them).
+- Route contract: `scripts/security/extract-routes.ts` reads the gateway's admin routers (and a mount guarded by a permission in `router.ts`); `routes.expected.json` has a `"gateway"` section with a decision per changing route (the two editor previews exempt, with the reason); `route-drift.test.ts` fails for a route without a decision, a decision that does not match the code, or a spec nobody uses (checked by removing a wrapper).
+- New `scripts/security/api/audit-gateway-admin.test.ts`: each action writes its row, no credential or key in any row.
+- Dashboard: audit filter choices for Gateway endpoints and routes; "API clients (and refused calls)"; `key_revoke` gets the red badge.
+- Docs: `operations/audit-log.md` (Gateway and API client actions, limits, developer section).
+- The endpoint snapshot names the stored credentials in `authFields`: a key named `credentialFields` was turned into "[redacted]" by the audit's safety net. `unit/audit-guard.test.ts` mocks `dist/db/audit-log-records.js`, the module the moved guard imports `insertAuditSafe` from.
+- Checked: typecheck 19/19; core unit tests 490 passed; full security API suite on the rebuilt stack 2390 passed, 2 skipped.
+
 ## Failed attempts in the audit log (0.4, item 3.1) — 2026-10-28
 - Branch: `feat/audit-failed-attempts`. Second item of `docs/plans/system/release-0.4-plan.md` 3.1.
 - `packages/core/src/db/audit-log.ts`: actor type `anonymous`; `createFailedAttemptRecorder()` writes at most 10 rows a minute per address and action (bounded keys), then calls `onThrottled` once for the rest of the window (2 unit tests). `auth/express-guards.ts`: `onPermissionRefused(listener)`, called by `requirePermission` and `requireAnyPermission` on a 403 (not on a missing session).

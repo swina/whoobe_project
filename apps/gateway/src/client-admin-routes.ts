@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { isIP } from 'node:net';
 import { PERMISSIONS, requirePermission } from './auth.js';
+import { audited, AUDIT } from './audit-specs.js';
 import { logGatewayError } from './log-error.js';
 
 // Management of API clients from the dashboard (docs/plans/api-gateway/client-access-hub.md). Needs `gateway:manage`.
@@ -51,7 +52,7 @@ export function createClientAdminRoutes(): Router {
     } catch (err) { fail(res, err, 'list api clients'); }
   });
 
-  router.post('/', gate, async (req: Request & { user?: { id?: string } }, res: Response): Promise<void> => {
+  router.post('/', gate, audited(AUDIT.clientCreate), async (req: Request & { user?: { id?: string } }, res: Response): Promise<void> => {
     try {
       const core = await import('@whoobe-cms/core/server');
       const b = (req.body ?? {}) as Record<string, unknown>;
@@ -97,7 +98,7 @@ export function createClientAdminRoutes(): Router {
     } catch (err) { fail(res, err, 'get api client'); }
   });
 
-  router.patch('/:id', gate, async (req: Request, res: Response): Promise<void> => {
+  router.patch('/:id', gate, audited(AUDIT.clientUpdate), async (req: Request, res: Response): Promise<void> => {
     try {
       const core = await import('@whoobe-cms/core/server');
       const current = await core.getApiClient(req.params.id);
@@ -140,7 +141,7 @@ export function createClientAdminRoutes(): Router {
     } catch (err) { fail(res, err, 'update api client'); }
   });
 
-  router.delete('/:id', gate, async (req: Request, res: Response): Promise<void> => {
+  router.delete('/:id', gate, audited(AUDIT.clientDelete), async (req: Request, res: Response): Promise<void> => {
     try {
       const core = await import('@whoobe-cms/core/server');
       if (!(await core.deleteApiClient(req.params.id))) { res.status(404).json({ error: 'Client not found' }); return; }
@@ -149,7 +150,7 @@ export function createClientAdminRoutes(): Router {
   });
 
   // Rotation: add a key, move the application to it, then revoke the old one.
-  router.post('/:id/keys', gate, async (req: Request, res: Response): Promise<void> => {
+  router.post('/:id/keys', gate, audited(AUDIT.clientKeyAdd), async (req: Request, res: Response): Promise<void> => {
     try {
       const core = await import('@whoobe-cms/core/server');
       const owner = await core.getApiClient(req.params.id);
@@ -163,7 +164,7 @@ export function createClientAdminRoutes(): Router {
     } catch (err) { fail(res, err, 'add api client key'); }
   });
 
-  router.delete('/:id/keys/:keyId', gate, async (req: Request, res: Response): Promise<void> => {
+  router.delete('/:id/keys/:keyId', gate, audited(AUDIT.clientKeyRevoke), async (req: Request, res: Response): Promise<void> => {
     try {
       const core = await import('@whoobe-cms/core/server');
       if (!(await core.revokeApiClientKey(req.params.id, req.params.keyId))) { res.status(404).json({ error: 'Key not found or already revoked' }); return; }

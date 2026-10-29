@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { extractRoutes } from '../extract-routes'
+import { extractRoutes, extractGatewayAdminRoutes } from '../extract-routes'
 import { SECURITY_DIR, ROOT_DIR } from '../lib/config'
 
 interface Expected { access: string; permissions: string[]; mode?: string; note?: string; audit?: string }
@@ -79,5 +79,34 @@ describe('route table drift (core-api)', () => {
     const src = readFileSync(resolve(ROOT_DIR, 'apps/core-api/src/publish-jobs.ts'), 'utf8')
     expect(src).toMatch(/r\.post\('\/publish\/jobs', canPublish, audited\(AUDIT\.publishQueue\)/)
     expect(src).toMatch(/r\.post\('\/publish\/jobs\/:id\/cancel', canPublish, audited\(AUDIT\.publishCancel\)/)
+  })
+})
+
+// Release 0.4 "Gateway administration audited": every changing administration route of the gateway names its spec or states an exemption
+describe('audit decisions (gateway administration)', () => {
+  const decided: Record<string, { audit: string }> = JSON.parse(readFileSync(resolve(SECURITY_DIR, 'routes.expected.json'), 'utf8')).gateway
+  const { _comment, ...gatewayExpected } = decided as Record<string, any>
+  const gatewayActual = extractGatewayAdminRoutes()
+
+  it('has an audit decision for every gateway administration route that changes something, and none stale', () => {
+    expect(gatewayActual.filter((r) => !gatewayExpected[r.key]).map((r) => `${r.key} (${r.file}:${r.line})`), 'add it to "gateway" in routes.expected.json').toEqual([])
+    const keys = new Set(gatewayActual.map((r) => r.key))
+    expect(Object.keys(gatewayExpected).filter((k) => !keys.has(k))).toEqual([])
+  })
+
+  it('wraps exactly the gateway routes decided as audited, with the decided spec; an exemption states a reason', () => {
+    const diffs = gatewayActual.filter((r) => gatewayExpected[r.key]).filter((r) => {
+      const a: string = gatewayExpected[r.key].audit
+      return a.startsWith('exempt:') ? r.audit !== null || a.length < 20 : r.audit !== a
+    }).map((r) => `${r.key}: decided "${gatewayExpected[r.key].audit}", the route has ${r.audit ? `audited(AUDIT.${r.audit})` : 'no audited(...)'}`)
+    expect(diffs).toEqual([])
+  })
+
+  it('every spec in the gateway audit-specs.ts is used by a route, and every route names a spec that exists', () => {
+    const src = readFileSync(resolve(ROOT_DIR, 'apps/gateway/src/audit-specs.ts'), 'utf8')
+    const defined = [...src.slice(src.indexOf('export const AUDIT')).matchAll(/^  (\w+):/gm)].map((m) => m[1])
+    const used = new Set(gatewayActual.map((r) => r.audit).filter(Boolean) as string[])
+    expect(defined.filter((n) => !used.has(n)), 'a spec nobody uses').toEqual([])
+    expect([...used].filter((n) => !defined.includes(n)), 'a route names a spec that is not defined').toEqual([])
   })
 })

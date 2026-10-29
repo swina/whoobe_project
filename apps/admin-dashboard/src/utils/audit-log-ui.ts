@@ -11,10 +11,12 @@ export const ACTION_CHOICES: { value: string; label: string }[] = [
   { value: 'setting.', label: 'Settings' },
   { value: 'migration_source.', label: 'Migration sources' },
   { value: 'object_event_subscription.', label: 'Object event subscriptions' },
+  { value: 'gateway_endpoint.', label: 'Gateway endpoints' },
+  { value: 'gateway_route.', label: 'Gateway routes' },
   { value: 'audit.', label: 'The log itself (retention)' },
   { value: 'auth.', label: 'Failed sign-ins and second factors' },
   { value: 'access.', label: 'Refused permissions' },
-  { value: 'api_client.', label: 'Refused API clients' },
+  { value: 'api_client.', label: 'API clients (and refused calls)' },
 ]
 
 /** `user.reset_password` -> "User: reset password". */
@@ -27,7 +29,7 @@ export function actionLabel(action: string): string {
 
 /** A tone for the badge: removals and failed or refused attempts red, creations green, everything else neutral. */
 export function actionTone(action: string): 'create' | 'delete' | 'change' {
-  if (/(^|[._])(delete|remove|clear|purge|cancel|failed|refused)/.test(action)) return 'delete'
+  if (/(^|[._])(delete|remove|clear|purge|cancel|failed|refused|key_revoke)/.test(action)) return 'delete'
   if (/(^|[._])(create|import)/.test(action)) return 'create'
   return 'change'
 }
