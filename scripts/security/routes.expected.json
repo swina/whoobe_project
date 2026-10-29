@@ -1934,5 +1934,59 @@
       "access": "public",
       "permissions": []
     }
+  },
+  "gateway": {
+    "_comment": "The gateway's administration routes (release-0.4-plan.md): each changing route names its spec in apps/gateway/src/audit-specs.ts or states why it is exempt. Checked by api/route-drift.test.ts.",
+    "POST /api/v1/gateway/endpoints": {
+      "audit": "endpointCreate"
+    },
+    "PATCH /api/v1/gateway/endpoints/:id": {
+      "audit": "endpointUpdate"
+    },
+    "DELETE /api/v1/gateway/endpoints/:id": {
+      "audit": "endpointDelete"
+    },
+    "POST /api/v1/gateway/endpoints/:id/import-openapi": {
+      "audit": "endpointImportOpenApi"
+    },
+    "POST /api/v1/gateway/endpoints/:id/routes": {
+      "audit": "routeCreate"
+    },
+    "PATCH /api/v1/gateway/routes/:id": {
+      "audit": "routeUpdate"
+    },
+    "DELETE /api/v1/gateway/routes/:id": {
+      "audit": "routeDelete"
+    },
+    "POST /api/v1/gateway/routes/:id/test": {
+      "audit": "routeTest"
+    },
+    "POST /api/v1/gateway/routes/:id/refresh-schema": {
+      "audit": "routeRefreshSchema"
+    },
+    "POST /api/v1/gateway/routes/:id/execute": {
+      "audit": "routeExecute"
+    },
+    "POST /api/v1/gateway/preview-resolve": {
+      "audit": "exempt: the editor's live preview of a binding being authored: reads the upstream with a GET, changes nothing"
+    },
+    "POST /api/v1/gateway/preview-submit": {
+      "audit": "exempt: the editor's preview of a page Form: the same bound write a visitor's submission makes on the published site, content traffic and not administration"
+    },
+    "POST /api/v1/gateway/clients": {
+      "audit": "clientCreate"
+    },
+    "PATCH /api/v1/gateway/clients/:id": {
+      "audit": "clientUpdate"
+    },
+    "DELETE /api/v1/gateway/clients/:id": {
+      "audit": "clientDelete"
+    },
+    "POST /api/v1/gateway/clients/:id/keys": {
+      "audit": "clientKeyAdd"
+    },
+    "DELETE /api/v1/gateway/clients/:id/keys/:keyId": {
+      "audit": "clientKeyRevoke"
+    }
   }
 }

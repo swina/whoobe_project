@@ -44,6 +44,39 @@ export function extractRoutes(file = resolve(ROOT_DIR, 'apps/core-api/src/server
   return routes
 }
 
+// The gateway's administration routes (release-0.4-plan.md, "Gateway administration audited"): every `router.<verb>(path, ...)` that
+// changes something in the two admin routers, under the path router.ts mounts it on, plus a mount guarded by a permission
+// (`router.use(path, requirePermission(...), handler)`, answered with a POST). Only the audit decision is checked for these.
+export interface GatewayRouteInfo { key: string; audit: string | null; file: string; line: number }
+
+const GATEWAY_ADMIN = [
+  { file: 'apps/gateway/src/admin-routes.ts', mount: '/api/v1/gateway' },
+  { file: 'apps/gateway/src/client-admin-routes.ts', mount: '/api/v1/gateway/clients' },
+]
+
+export function extractGatewayAdminRoutes(): GatewayRouteInfo[] {
+  const routes: GatewayRouteInfo[] = []
+  const lineOf = (src: string, i: number) => src.slice(0, i).split('\n').length
+  for (const { file, mount } of GATEWAY_ADMIN) {
+    const src = readFileSync(resolve(ROOT_DIR, file), 'utf8')
+    const re = /^\s*router\.(post|put|patch|delete)\(\s*(['"`])([^'"`]+)\2/gm
+    let m: RegExpExecArray | null
+    while ((m = re.exec(src))) {
+      const rest = src.slice(m.index + m[0].length, m.index + m[0].length + 400)
+      const arrow = rest.indexOf('=>')
+      const mw = arrow >= 0 ? rest.slice(0, arrow) : rest
+      const path = m[3] === '/' ? mount : `${mount}${m[3]}`
+      routes.push({ key: `${m[1].toUpperCase()} ${path}`, audit: /\baudited\(\s*AUDIT\.(\w+)\s*\)/.exec(mw)?.[1] ?? null, file, line: lineOf(src, m.index) })
+    }
+  }
+  const file = 'apps/gateway/src/router.ts'
+  const src = readFileSync(resolve(ROOT_DIR, file), 'utf8')
+  for (const m of src.matchAll(/^\s*router\.use\(\s*'([^']+)',\s*(requirePermission\([^)]*\)[^\n]*)$/gm)) {
+    routes.push({ key: `POST ${m[1]}`, audit: /\baudited\(\s*AUDIT\.(\w+)\s*\)/.exec(m[2])?.[1] ?? null, file, line: lineOf(src, m.index!) })
+  }
+  return routes
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const routes = extractRoutes()
   writeFileSync(resolve(SECURITY_DIR, 'routes.generated.json'), JSON.stringify(routes, null, 2) + '\n')

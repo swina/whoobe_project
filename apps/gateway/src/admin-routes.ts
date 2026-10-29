@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { requirePermission, PERMISSIONS } from './auth.js';
+import { audited, AUDIT } from './audit-specs.js';
 import type { GatewayPlugin } from './plugin-types.js';
 import type { GatewayPreset } from './preset-types.js';
 import { logGatewayError } from './log-error.js';
@@ -34,7 +35,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
     }
   });
 
-  router.post('/endpoints', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  router.post('/endpoints', requirePermission(PERMISSIONS.GATEWAY_MANAGE), audited(AUDIT.endpointCreate), async (req: Request, res: Response): Promise<void> => {
     try {
       const { createGatewayEndpoint } = await import('@whoobe-cms/core/server');
       const endpoint = await createGatewayEndpoint(req.body);
@@ -57,7 +58,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
     }
   });
 
-  router.patch('/endpoints/:id', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  router.patch('/endpoints/:id', requirePermission(PERMISSIONS.GATEWAY_MANAGE), audited(AUDIT.endpointUpdate), async (req: Request, res: Response): Promise<void> => {
     try {
       const { getGatewayEndpoint, updateGatewayEndpoint } = await import('@whoobe-cms/core/server');
 
@@ -85,7 +86,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
     }
   });
 
-  router.delete('/endpoints/:id', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  router.delete('/endpoints/:id', requirePermission(PERMISSIONS.GATEWAY_MANAGE), audited(AUDIT.endpointDelete), async (req: Request, res: Response): Promise<void> => {
     try {
       const { deleteGatewayEndpoint } = await import('@whoobe-cms/core/server');
       await deleteGatewayEndpoint(req.params.id);
@@ -107,7 +108,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
     }
   });
 
-  router.post('/endpoints/:id/routes', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  router.post('/endpoints/:id/routes', requirePermission(PERMISSIONS.GATEWAY_MANAGE), audited(AUDIT.routeCreate), async (req: Request, res: Response): Promise<void> => {
     try {
       const { createGatewayRoute } = await import('@whoobe-cms/core/server');
       const route = await createGatewayRoute({ ...req.body, endpointId: req.params.id });
@@ -118,7 +119,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
     }
   });
 
-  router.patch('/routes/:id', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  router.patch('/routes/:id', requirePermission(PERMISSIONS.GATEWAY_MANAGE), audited(AUDIT.routeUpdate), async (req: Request, res: Response): Promise<void> => {
     try {
       const { updateGatewayRoute } = await import('@whoobe-cms/core/server');
       const route = await updateGatewayRoute(req.params.id, req.body);
@@ -130,7 +131,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
     }
   });
 
-  router.delete('/routes/:id', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  router.delete('/routes/:id', requirePermission(PERMISSIONS.GATEWAY_MANAGE), audited(AUDIT.routeDelete), async (req: Request, res: Response): Promise<void> => {
     try {
       const { deleteGatewayRoute } = await import('@whoobe-cms/core/server');
       await deleteGatewayRoute(req.params.id);
@@ -141,7 +142,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
     }
   });
 
-  router.post('/routes/:id/test', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  router.post('/routes/:id/test', requirePermission(PERMISSIONS.GATEWAY_MANAGE), audited(AUDIT.routeTest), async (req: Request, res: Response): Promise<void> => {
     try {
       const { getGatewayRoute, getGatewayEndpoint, updateGatewayRoute } = await import('@whoobe-cms/core/server');
       const { inferSchema } = await import('./schema-inferrer.js');
@@ -189,7 +190,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
     }
   });
 
-  router.post('/routes/:id/execute', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  router.post('/routes/:id/execute', requirePermission(PERMISSIONS.GATEWAY_MANAGE), audited(AUDIT.routeExecute), async (req: Request, res: Response): Promise<void> => {
     try {
       const { getGatewayRoute, getGatewayEndpoint } = await import('@whoobe-cms/core/server');
       const { proxyFetch } = await import('./proxy-engine.js');
@@ -242,7 +243,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
     }
   });
 
-  router.post('/routes/:id/refresh-schema', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  router.post('/routes/:id/refresh-schema', requirePermission(PERMISSIONS.GATEWAY_MANAGE), audited(AUDIT.routeRefreshSchema), async (req: Request, res: Response): Promise<void> => {
     try {
       const { getGatewayRoute, getGatewayEndpoint, updateGatewayRoute } = await import('@whoobe-cms/core/server');
       const { inferSchema } = await import('./schema-inferrer.js');
@@ -281,7 +282,7 @@ export function createAdminRoutes(plugins: GatewayPlugin[], presets: GatewayPres
     }
   });
 
-  router.post('/endpoints/:id/import-openapi', requirePermission(PERMISSIONS.GATEWAY_MANAGE), async (req: Request, res: Response): Promise<void> => {
+  router.post('/endpoints/:id/import-openapi', requirePermission(PERMISSIONS.GATEWAY_MANAGE), audited(AUDIT.endpointImportOpenApi), async (req: Request, res: Response): Promise<void> => {
     try {
       const { getGatewayEndpoint } = await import('@whoobe-cms/core/server');
       const endpoint = await getGatewayEndpoint(req.params.id);

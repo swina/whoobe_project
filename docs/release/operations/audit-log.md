@@ -34,6 +34,8 @@ import) leaves no row.
 | Personal data | `data_subject.search`, `data_subject.export`, `data_subject.erase` (a fingerprint of the identifier and the counts, **never the identifier**), `data_class.retention_update`, `retention.purge` (the classes and the counts), `ai_usage.read_user` (an administrator opened one person's AI requests: the person, the period, the number of requests) |
 | Publication | `website.publish` (a site generation was queued: framework, slug, domain; whether a site key was given, never the key), `website.publish_cancel` |
 | Fonts | `font.create`, `font.delete` (family, weight, style and the path of the woff2 file) |
+| Gateway | `gateway_endpoint.create`, `.update`, `.delete` (name, address, kind of authentication, timeouts and limits, active; the **names** of the stored credentials, a new credential is "changed"), `gateway_endpoint.import_openapi` (the spec's address without its query, or "pasted"; routes created, updated, skipped); `gateway_route.create`, `.update`, `.delete`; `gateway_route.test`, `.refresh_schema`, `.execute` (a call made to the upstream with the stored credentials: the upstream status, never a body; an `execute` that never reached the upstream is not written) |
+| API clients | `api_client.create`, `.update`, `.delete` (name, authentication mode, status, scopes, limits, allowed addresses, expiry, the identity provider's registration), `api_client.key_add` (the key's id, prefix, label and expiry, **never the key**), `api_client.key_revoke` |
 | Integrations | `migration_source.create`, `.update`, `.delete`, `.import_classes`, `.import_objects`, `.import_documents`, `.promote_documents`, `.extract_components`; `object_event_subscription.create`, `.update`, `.delete` |
 | The log itself | `audit.purge` (written by the retention job with the number of rows removed) |
 
@@ -101,7 +103,8 @@ There is **no route that writes, changes or deletes a row.**
 ## 4. Limits
 
 - Successful actions, and the failed attempts listed in section 1; a missing session (401) is not written.
-- Administration of the Gateway (API clients, keys, endpoints, routes) is not in this log yet; it is written by another service and comes in a later step.
+- The Gateway writes its rows itself: a row it cannot write is in the gateway's log (`audit: the row could not be written`), not in core-api's `GET /health`.
+- The editor's previews on the Gateway (`preview-resolve`, `preview-submit`) are not written: one reads, the other is the same write a visitor's form makes.
 - No hash chain or external anchoring; no export to a SIEM (use the CSV export on a schedule).
 - One log per workspace, like everything else; a deleted workspace takes its log with it.
 
@@ -111,3 +114,7 @@ A route that changes something must decide, in `scripts/security/routes.expected
 `audited(AUDIT.<specName>)` in its middleware list, after the permission guard) or `"audit": "exempt: <the reason>"`. The route-drift test fails for a new
 route without a decision, for a decision that does not match the code, and for a spec nobody uses. A spec (`apps/core-api/src/audit-specs.ts`) names the
 fields it records and the credentials it must never record.
+
+The Gateway's administration routes (`apps/gateway/src/admin-routes.ts`, `client-admin-routes.ts`, and a mount guarded by a permission in `router.ts`)
+decide the same way under `"gateway"` in that file, with their specs in `apps/gateway/src/audit-specs.ts`. `audited()` itself is shared, in
+`packages/core/src/http/audited.ts`.
