@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Base images are pinned by digest (reproducible builds, no silent upstream change); Dependabot proposes updates.
-FROM node:22-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS base
+FROM node:22-bookworm-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS base
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
@@ -32,7 +32,7 @@ RUN pnpm build
 # ─── Runtime base ───────────────────────────────────────────────────────────
 # No pnpm/corepack and no npm in what runs in production: they are only needed to build, and their
 # bundled dependencies (tar, minimatch, brace-expansion, pnpm itself) are most of the image CVEs.
-FROM node:22-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS runtime
+FROM node:22-bookworm-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS runtime
 # hadolint ignore=DL3059
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /root/.cache
 # the pinned bookworm digest lags behind Debian's security updates: libpcre2 10.42-1+deb12u1 (CVE-2026-103111, fixed in
@@ -81,7 +81,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 CMD ["node", "apps/asset-processor/dist/server.js"]
 
 # ─── Admin Dashboard ────────────────────────────────────────────────────────
-FROM nginxinc/nginx-unprivileged:alpine@sha256:26b0bf6fbf07297983cb341998d79c831508787de26627dd2a112321b9c3a4af AS admin-dashboard
+FROM nginxinc/nginx-unprivileged:alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e AS admin-dashboard
 # the pinned alpine falls behind its own security updates (pcre2, tiff, libexpat, libx11, brotli-libs and curl had fixable HIGH CVEs between
 # 2026-10-05 and 2026-10-26, one list entry each time): upgrade every package at build time; the image scan of the release checks the result
 USER 0
@@ -93,7 +93,7 @@ COPY --chmod=755 nginx/render-runtime-config.sh /docker-entrypoint.d/40-whoobe-c
 EXPOSE 8080
 
 # ─── Whoobe One Spike ──────────────────────────────────────────────────────
-FROM nginxinc/nginx-unprivileged:alpine@sha256:26b0bf6fbf07297983cb341998d79c831508787de26627dd2a112321b9c3a4af AS whoobe-one-spike
+FROM nginxinc/nginx-unprivileged:alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e AS whoobe-one-spike
 # same as the dashboard's image above
 USER 0
 RUN apk upgrade --no-cache
