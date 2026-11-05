@@ -39,8 +39,8 @@ case "$WHAT" in
     OUT="$ROOT/sites/pages-home"
     rm -rf "$OUT"; mkdir -p "$OUT"
     cp -R scripts/site/pages/home/. "$OUT/"
-    # DOCS_URL: where the documentation links go; the docs in the repository until docs.whoobe.dev is published
-    DOCS_URL="${DOCS_URL:-$REPO_URL/blob/master/docs/release/README.md}"
+    # DOCS_URL: where the documentation links go (another address to preview a change, e.g. the docs on GitHub)
+    DOCS_URL="${DOCS_URL:-https://docs.whoobe.dev}"
     sed -i.bak -e "s/{{VERSION}}/$VERSION/g" -e "s#{{DOCS_URL}}#$DOCS_URL#g" "$OUT/index.html" "$OUT/404.html" && rm -f "$OUT"/*.bak
     deploy "$OUT" "${HOME_PROJECT:-whoobe-dev}"
     ;;
