@@ -62,7 +62,9 @@ Copy `.env.example` to `.env` and change the `change_me_*` values (`S3_ACCESS_KE
 ### Docker
 
 The quickest way to test Whoobe is `./try.sh` (see the [README](../README.md)): it generates the settings and runs `docker-compose.yml`
-for you. By hand, with a `.env` made as above:
+for you. It starts the **released** images of the version in `package.json` (pulled from `ghcr.io`) when the checkout's
+`docker-compose.yml` is the release tag's; to run your own changes use `./try.sh rebuild`, which builds from the checkout and keeps doing
+so on the next starts (`TRY_IMAGES=release ./try.sh` goes back). By hand, with a `.env` made as above:
 
 ```
 $ git clone https://github.com/swina/whoobe_project

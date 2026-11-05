@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Whoobe, a self-hosted platform instead of the glue between your CMS, your data and your systems</title>
+  <meta name="description" content="Whoobe is a self-hosted platform for content, data and integrations. MIT licence, one organisation per installation, no per-user fee.">
+  <link rel="canonical" href="https://whoobe.dev/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta property="og:title" content="Whoobe">
+  <meta property="og:description" content="One platform instead of the glue between your CMS, your data and your systems.">
+  <meta property="og:url" content="https://whoobe.dev/">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/main.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><a href="/">whoobe</a> <a class="badge" href="https://github.com/swina/whoobe_project/releases/tag/v{{VERSION}}">v{{VERSION}}</a></div>
+    <nav>
+      <a href="{{DOCS_URL}}">Documentation</a>
+      <a href="https://github.com/swina/whoobe_project">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>One platform instead of the glue between your CMS, your data and your systems.</h1>
+      <p class="lead">Whoobe is a self-hosted platform for content, data and integrations. You configure it instead of coding it,
+        the people who use it need no code, and the security an organisation asks for is part of the product.
+        MIT licence, one organisation per installation, no per-user fee.</p>
+      <div class="actions">
+        <a class="button primary" href="{{DOCS_URL}}">Read the documentation</a>
+        <a class="button" href="https://github.com/swina/whoobe_project">Source on GitHub</a>
+      </div>
+    </section>
+
+    <section class="try" aria-labelledby="try">
+      <h2 id="try">Run it on your machine</h2>
+      <p>Docker with Compose. The first start takes a few minutes; the script prints the address and the login.</p>
+      <div class="cmd">
+        <code id="cmd">git clone https://github.com/swina/whoobe_project &amp;&amp; cd whoobe_project &amp;&amp; ./try.sh</code>
+        <button type="button" data-copy="cmd" aria-label="Copy the command">Copy</button>
+      </div>
+      <p class="small"><code>./try.sh stop</code> keeps the data, <code>./try.sh reset</code> deletes everything.
+        For a real installation see <a href="{{DOCS_URL}}">the documentation</a>.</p>
+    </section>
+
+    <section class="points" aria-label="What to check">
+      <div>
+        <h3>Configuration, not glue code</h3>
+        <p>Point the gateway at an OpenAPI file or a sample request: routes, response shapes and fields appear in the editor,
+          and a block can show the data. The credentials stay on the server.</p>
+      </div>
+      <div>
+        <h3>No-code for the people who use it</h3>
+        <p>Editors build pages from blocks, snippets and kits. A data manager adds a field to a class without a deploy.</p>
+      </div>
+      <div>
+        <h3>Security controls, and the proof behind them</h3>
+        <p>An append-only audit log, two-factor authentication by role, single sign-on with OpenID Connect, encrypted credentials.
+          We say what we tested and list what is not covered.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <a href="{{DOCS_URL}}">Documentation</a>
+    <a href="https://github.com/swina/whoobe_project/releases">Releases</a>
+    <a href="https://github.com/swina/whoobe_project/discussions">Discussions</a>
+    <a href="https://github.com/swina/whoobe_project/blob/master/SECURITY.md">Security policy</a>
+    <a href="https://github.com/swina/whoobe_project/blob/master/LICENSE.md">MIT licence</a>
+  </footer>
+</body>
+</html>

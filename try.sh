@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Try Whoobe on this machine with one command: builds the images, starts the whole stack in Docker (Postgres, Garage as the S3 store,
+# Try Whoobe on this machine with one command: starts the whole stack in Docker (Postgres, Garage as the S3 store,
 # the API, the asset service, the gateway, the dashboard and the editor) and prints the address and the login.
 #
-#   ./try.sh            start (the first time it builds the images: several minutes; the next starts reuse them and take seconds)
-#   ./try.sh rebuild    start and build the images again: after you changed the code or ran `git pull` (several minutes)
+#   ./try.sh            start. The application images are the released ones of this version (package.json), pulled from
+#                       ghcr.io the first time (a download, no build), when this checkout can run them: it is the release tag, or
+#                       its docker-compose.yml is the same as the tag's. Otherwise (and after `rebuild`) it builds them from this checkout
+#   ./try.sh rebuild    build the images from this checkout and start: after you changed the code (several minutes). The next starts
+#                       keep using the images built here; TRY_IMAGES=release ./try.sh goes back to the released ones
 #   ./try.sh stop       stop the stack, keep the data
 #   ./try.sh reset      stop it and delete its data and its settings file (the next start begins from nothing)
 #   ./try.sh status     show the containers
@@ -12,6 +15,8 @@
 # Needs Docker with Compose and `openssl`. It uses the ports 3000 to 3003 and 3006 (dashboard, gateway, asset service, API, editor),
 # 5432 and 9000: stop whatever uses them, or move all of them with TRY_PORT_BASE=3200 ./try.sh (every port moves by the same step).
 # Settings and secrets are generated once into `.env.try` (mode 600, git-ignored); this does not touch a `.env` you may have.
+# TRY_IMAGES=release|build forces the choice (and is remembered); TRY_IMAGE_PREFIX moves the registry (default ghcr.io/swina/whoobe).
+# The Garage image is never published: it is built here when missing (a small image, seconds).
 # This is an evaluation stack on plain http://localhost: for a real installation see docs/release/operations/creating-workspaces.md.
 set -euo pipefail
 
@@ -25,6 +30,14 @@ BASE="${TRY_PORT_BASE:-3000}"
 STEP=$((BASE - 3000))
 P_ADMIN=$((3000 + STEP)); P_GATEWAY=$((3001 + STEP)); P_ASSET=$((3002 + STEP)); P_CORE=$((3003 + STEP)); P_EDITOR=$((3006 + STEP))
 P_PG=$((5432 + STEP)); P_S3=$((9000 + STEP))
+
+case "${TRY_IMAGES:-}" in ""|release|build) ;; *) echo "TRY_IMAGES must be release or build" >&2; exit 1 ;; esac
+REGISTRY_PREFIX="${TRY_IMAGE_PREFIX:-ghcr.io/swina/whoobe}"
+APP_SERVICES=(core-api asset-processor gateway admin-dashboard whoobe-one-spike)
+VERSION="$(sed -nE 's/^  "version": "([^"]+)".*/\1/p' "$ROOT/package.json" | head -1)"
+GARAGE_IMAGE="$(sed -nE 's/^    image: (whoobe-garage:[^ ]+)$/\1/p' "$ROOT/docker-compose.yml" | head -1)"
+# the image names come from .env.try only: a value exported in the shell would win over it in compose
+unset WHOOBE_IMAGE_PREFIX WHOOBE_VERSION
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "$1 is required and was not found" >&2; exit 1; }; }
 dc() { ENV_FILE="$ENVF" COMPOSE_PROFILES=local-s3 docker compose -p "$PROJECT" --env-file "$ENVF" -f "$ROOT/docker-compose.yml" "$@"; }
@@ -94,7 +107,24 @@ ENV
   chmod 600 "$ENVF"
 }
 
-get() { grep -E "^$1=" "$ENVF" | head -1 | cut -d= -f2-; }
+get() { grep -E "^$1=" "$ENVF" | head -1 | cut -d= -f2- || true; }
+
+# set KEY=VALUE in .env.try (replaced or appended); written through a temp file, so it works with BSD and GNU tools alike
+set_env() {
+  local tmp="$ENVF.tmp"
+  ( umask 077; { grep -vE "^$1=" "$ENVF" || true; echo "$1=$2"; } > "$tmp" )
+  mv "$tmp" "$ENVF"; chmod 600 "$ENVF"
+}
+
+# the released images of $VERSION fit this checkout: not a git checkout (a release archive), or the compose file is the tag's
+release_fits() {
+  [ -n "$VERSION" ] || return 1
+  [ -e "$ROOT/.git" ] && command -v git >/dev/null 2>&1 || return 0   # -e: .git is a file in a worktree
+  git -C "$ROOT" rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null || return 1   # tag not here (shallow clone): build
+  git -C "$ROOT" diff --quiet "v$VERSION" -- docker-compose.yml
+}
+
+have_all() { local img; for img in "$@"; do docker image inspect "$img" >/dev/null 2>&1 || return 1; done; }
 
 check_ports() {
   command -v ss >/dev/null 2>&1 || return 0
@@ -114,26 +144,65 @@ case "$CMD" in
   start|rebuild)
     need docker; need openssl
     docker compose version >/dev/null 2>&1 || { echo "Docker Compose (the 'docker compose' command) is required" >&2; exit 1; }
+    NEW_ENV=0
     if [ -f "$ENVF" ]; then
       BASE="$(get TRY_PORT_BASE)"; BASE="${BASE:-3000}"; STEP=$((BASE - 3000))
       P_ADMIN=$((3000 + STEP)); P_GATEWAY=$((3001 + STEP)); P_ASSET=$((3002 + STEP)); P_CORE=$((3003 + STEP)); P_EDITOR=$((3006 + STEP))
     else
       check_ports
       write_env
+      NEW_ENV=1
       echo ">>> settings and secrets written to .env.try"
     fi
-    BUILD=()
-    have_images=1
-    for svc in core-api asset-processor gateway admin-dashboard whoobe-one-spike; do
-      docker image inspect "${PROJECT}-${svc}" >/dev/null 2>&1 || have_images=0
-    done
-    if [ "$CMD" = rebuild ] || [ "$have_images" = 0 ]; then
-      BUILD=(--build)
-      echo ">>> building and starting the stack (building takes several minutes) ..."
+    # released images or a build: rebuild > TRY_IMAGES > the choice remembered in .env.try > what fits this checkout
+    if [ "$CMD" = rebuild ]; then
+      MODE=build; set_env TRY_IMAGES build
+    elif [ -n "${TRY_IMAGES:-}" ]; then
+      MODE="$TRY_IMAGES"; set_env TRY_IMAGES "$MODE"
     else
-      echo ">>> starting the stack with the images already built (./try.sh rebuild after a git pull) ..."
+      MODE="$(get TRY_IMAGES)"
     fi
-    dc up -d ${BUILD[@]+"${BUILD[@]}"}   # empty array safe on bash 3.2 (macOS)
+    if [ -z "$MODE" ]; then
+      if [ "$NEW_ENV" = 0 ] && [ -z "$(get WHOOBE_VERSION)" ]; then
+        MODE=build     # a stack started by an older try.sh, which always built: its database may be ahead of the release
+      elif release_fits; then
+        MODE=release
+      else
+        MODE=build
+      fi
+    fi
+
+    if [ "$MODE" = release ]; then
+      set_env WHOOBE_IMAGE_PREFIX "$REGISTRY_PREFIX"; set_env WHOOBE_VERSION "$VERSION"
+      RELEASED=(); for svc in "${APP_SERVICES[@]}"; do RELEASED+=("${REGISTRY_PREFIX}-${svc}:${VERSION}"); done
+      if ! have_all "${RELEASED[@]}"; then
+        echo ">>> downloading the released images of Whoobe ${VERSION} (${REGISTRY_PREFIX}-*, no build) ..."
+        if ! dc pull "${APP_SERVICES[@]}"; then
+          echo ">>> the released images of ${VERSION} could not be downloaded: building them from this checkout instead" >&2
+          MODE=build
+        fi
+      fi
+    fi
+    if [ "$MODE" = build ]; then
+      set_env WHOOBE_IMAGE_PREFIX whoobe; set_env WHOOBE_VERSION local
+    fi
+
+    have_all "$GARAGE_IMAGE" || { echo ">>> building the Garage image (seconds) ..."; dc build garage; }
+
+    if [ "$MODE" = release ]; then
+      echo ">>> starting the stack with the released images of ${VERSION} ..."
+      dc up -d --no-build
+    else
+      BUILD=()
+      LOCAL=(); for svc in "${APP_SERVICES[@]}"; do LOCAL+=("whoobe-${svc}:local"); done
+      if [ "$CMD" = rebuild ] || ! have_all "${LOCAL[@]}"; then
+        BUILD=(--build)
+        echo ">>> building the images from this checkout and starting the stack (building takes several minutes) ..."
+      else
+        echo ">>> starting the stack with the images built from this checkout (./try.sh rebuild after you change the code) ..."
+      fi
+      dc up -d ${BUILD[@]+"${BUILD[@]}"}   # empty array safe on bash 3.2 (macOS)
+    fi
     echo ">>> waiting for the API ..."
     ok=0
     for _ in $(seq 1 120); do

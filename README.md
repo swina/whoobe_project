@@ -3,20 +3,18 @@
 A visual page editor, a data model you can change without a developer, a media library and a gateway to your existing APIs, in **one installation you run yourself**.
 TypeScript, Vue 3, Postgres, S3-compatible storage. MIT licence, one organisation per installation, no per-user fee.
 
-[**Live sandbox**](https://sandbox.whoobe.dev) · [**Documentation**](https://docs.whoobe.dev) · [**How Whoobe evolves**](docs/release/community/project-evolution.md) (contributors and testers wanted) · [unifythestack.dev](https://unifythestack.dev)
+[**whoobe.dev**](https://whoobe.dev) · [**Documentation**](https://docs.whoobe.dev) · [**How Whoobe evolves**](docs/release/community/project-evolution.md) (contributors and testers wanted) · [unifythestack.dev](https://unifythestack.dev)
 
 ## Try it
 
-**Online, nothing to install:** open the [sandbox](https://sandbox.whoobe.dev). The demo login is in the banner. It is a shared workspace that is deleted and rebuilt every 3 hours.
-
-**On your machine, one command** (Docker with Compose; the first start builds the images and takes several minutes):
+**On your machine, one command** (Docker with Compose; the first start downloads the released images, nothing is built):
 
 ```bash
 git clone https://github.com/swina/whoobe_project && cd whoobe_project && ./try.sh
 ```
 
 When it is up, the script prints the address (`http://localhost:3000`) and the login. `./try.sh stop` stops it and keeps the data, `./try.sh reset` deletes everything.
-Ports busy? `TRY_PORT_BASE=3200 ./try.sh` moves them all.
+Ports busy? `TRY_PORT_BASE=3200 ./try.sh` moves them all. Changed the code? `./try.sh rebuild` builds the images from your checkout.
 
 ## What you get
 

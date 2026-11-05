@@ -12,7 +12,7 @@ the author does not offer. This page says it in one place.
 
 ## 0. How to help now
 
-**Testers**: try the [sandbox](https://sandbox.whoobe.dev) or install Whoobe on your own machine, use it for something real, and report
+**Testers**: install Whoobe on your own machine (`./try.sh` in the repository, one command), use it for something real, and report
 what was hard, unclear or broken as an issue on the [repository](https://github.com/swina/whoobe_project/issues). Especially wanted: a
 pilot in a small organisation or an agency, other identity providers than Keycloak, a restore and an upgrade on your own host, a load
 test, a review of the documentation by someone other than the author.

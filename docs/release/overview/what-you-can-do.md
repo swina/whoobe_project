@@ -60,9 +60,10 @@ the backups and the upgrade of all of them at once.
 *Example: an upgrade tried first on one client's workspace (canary), then on the others.*
 [Upgrade and migrations](../operations/upgrade-and-migrations.md)
 
-## Try it in five minutes
-A public **sandbox** with a demo login, reset every three hours, or `./try.sh` on your own machine.
-*Example: open https://sandbox.whoobe.dev, sign in with the account shown in the banner, build a page.*
+## Try it on your machine
+`./try.sh` starts the whole stack in Docker with one command and prints the address and the login. A **sandbox** (a demo login,
+reset every three hours) can be run on a server of your own.
+*Example: clone the repository, run `./try.sh`, sign in with the login it prints, build a page.*
 [Sandbox](../operations/sandbox.md), [deployment](../operations/deployment.md)
 
 ## What to know before you decide
