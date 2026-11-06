@@ -107,3 +107,38 @@ describe('dark / light theme switch of the generated documentation site', () => 
     await expect(generateDocsSite({ ...o, versionUrl: 'https://x/"' })).rejects.toThrow(/versionUrl/)
   })
 })
+
+describe('index of the generated documentation site', () => {
+  const nav = [
+    { type: 'doc' as const, title: 'Home', path: 'README.md', route: '/' },
+    { type: 'section' as const, title: 'Guides', route: '/guides', path: 'guides/README.md', items: [
+      { type: 'doc' as const, title: 'Install', path: 'guides/install.md', route: '/guides/install' },
+      { type: 'section' as const, title: 'Deep', items: [{ type: 'doc' as const, title: 'Tuning', path: 'guides/deep/tuning.md', route: '/guides/deep/tuning' }] },
+    ] },
+    { type: 'section' as const, title: 'API <x>', items: [{ type: 'doc' as const, title: 'Reference', path: 'api/ref.md', route: '/api/ref' }] },
+  ]
+  it('every section can be closed, and only the sections on the way to the current page start open', async () => {
+    const { navHtml } = await import('../../../packages/publish/src/docs-site')
+    const html = navHtml(nav, '/guides/deep/tuning', '/')
+    expect(html.match(/<details/g)).toHaveLength(3)
+    expect(html.match(/<details open>/g)).toHaveLength(2)                       // Guides and Deep, not API
+    expect(html).toContain('<details><summary><span class="sec">API &lt;x&gt;</span></summary>')
+    expect(html).toContain('<a href="/guides/deep/tuning/" aria-current="page">Tuning</a>')
+    expect(html).toContain('<details open><summary><a class="sec" href="/guides/">Guides</a></summary>')
+  })
+  it('a section is open when its own page is the current one; the home page opens none', async () => {
+    const { navHtml } = await import('../../../packages/publish/src/docs-site')
+    const own = navHtml(nav, '/guides', '/docs/')
+    expect(own).toContain('<details open><summary><a class="sec" href="/docs/guides/" aria-current="page">Guides</a></summary>')
+    expect(own.match(/<details open>/g)).toHaveLength(1)
+    expect(navHtml(nav, '/', '/')).not.toContain('<details open>')
+  })
+  it('the script scrolls the index (not the page) to the current entry, also when the phone menu opens', async () => {
+    const { DOCS_JS } = await import('../../../packages/publish/src/docs-site')
+    expect(() => new Function(DOCS_JS)).not.toThrow()
+    expect(DOCS_JS).toContain('a[aria-current="page"]')
+    expect(DOCS_JS).toContain('nav.scrollTop +=')
+    expect(DOCS_JS).not.toContain('scrollIntoView')
+    expect(DOCS_JS).toMatch(/menu-open'\); showCurrent\(\)/)
+  })
+})

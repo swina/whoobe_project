@@ -75,14 +75,24 @@ export function flattenPages(nav: NavNode[]): { title: string; route: string }[]
   return out
 }
 
-function navHtml(items: NavNode[], current: string, base: string): string {
+/** Does this part of the index hold the page `current` (the section's own page included)? */
+function navHolds(n: NavNode, current: string): boolean {
+  if (n.type === 'doc') return n.route === current
+  if (n.type === 'section') return n.route === current || n.items.some((c) => navHolds(c, current))
+  return false
+}
+
+// A section is a <details>: it opens and closes without script, and only the sections on the way to the current page start open,
+// so a long index stays short. The section's own page (index:) is a link inside the summary: clicking the title opens the page,
+// clicking the arrow beside it opens or closes the section.
+export function navHtml(items: NavNode[], current: string, base: string): string {
   const li = items.map((n) => {
     if (n.type === 'link') return `<li><a href="${esc(n.href)}" rel="noopener noreferrer" target="_blank">${esc(n.title)} ↗</a></li>`
     if (n.type === 'doc') return `<li><a href="${esc(base + routeDir(n.route))}"${n.route === current ? ' aria-current="page"' : ''}>${esc(n.title)}</a></li>`
     const head = n.route
       ? `<a class="sec" href="${esc(base + routeDir(n.route))}"${n.route === current ? ' aria-current="page"' : ''}>${esc(n.title)}</a>`
       : `<span class="sec">${esc(n.title)}</span>`
-    return `<li>${head}${navHtml(n.items, current, base)}</li>`
+    return `<li><details${navHolds(n, current) ? ' open' : ''}><summary>${head}</summary>${navHtml(n.items, current, base)}</details></li>`
   })
   return `<ul>${li.join('')}</ul>`
 }
@@ -190,6 +200,10 @@ a{color:var(--accent)}
 #nav a,#nav .sec{display:block;padding:.2rem .5rem;border-radius:.3rem;color:var(--muted);text-decoration:none;line-height:1.35}
 #nav .sec{font-weight:600;color:var(--fg)}#nav a:hover{background:var(--soft)}
 #nav a[aria-current=page]{color:var(--accent);background:var(--soft);font-weight:600}
+#nav summary{display:flex;align-items:center;list-style:none;cursor:pointer;border-radius:.3rem}#nav summary::-webkit-details-marker{display:none}
+#nav summary::before{content:'';flex:none;width:.4rem;height:.4rem;margin:0 .1rem 0 .3rem;border:solid var(--muted);border-width:0 1.5px 1.5px 0;transform:rotate(-45deg);transition:transform .15s}
+#nav details[open]>summary::before{transform:rotate(45deg)}#nav summary:hover{background:var(--soft)}#nav summary .sec{flex:1;min-width:0}
+#nav summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 main{flex:1;min-width:0;padding:2rem 0}article{max-width:62rem}
 #toc{width:12rem;flex:none;position:sticky;top:3.5rem;align-self:flex-start;max-height:calc(100vh - 3.5rem);overflow:auto;padding:2rem 0;font-size:.8rem}
 .toc-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.4rem}
@@ -232,7 +246,17 @@ export const DOCS_JS = `(function () {
   'use strict';
   var base = document.body.getAttribute('data-base') || '/';
   var q = document.getElementById('q'), box = document.getElementById('results');
-  document.getElementById('menu').addEventListener('click', function () { document.body.classList.toggle('menu-open'); });
+  // the index scrolls to the current page (itself only: the page stays where it is); on a phone the index is hidden until the
+  // menu button opens it, so it is scrolled then
+  var nav = document.getElementById('nav');
+  function showCurrent() {
+    var cur = nav && nav.querySelector('a[aria-current="page"]');
+    if (!cur || !nav.clientHeight) return;
+    var n = nav.getBoundingClientRect(), c = cur.getBoundingClientRect();
+    if (c.top < n.top || c.bottom > n.bottom) nav.scrollTop += c.top - n.top - (nav.clientHeight - c.height) / 2;
+  }
+  showCurrent();
+  document.getElementById('menu').addEventListener('click', function () { document.body.classList.toggle('menu-open'); showCurrent(); });
 
   // light / dark: follows the system until the reader picks one; the choice is kept in this browser (the head script applies it before the first paint)
   var root = document.documentElement, themeBtn = document.getElementById('theme');
