@@ -65,7 +65,7 @@ const navLink = (t, href) => el('Link', { text: t, link: href, css: 'text-sm tex
 // (a link element is rendered as <a><element class=...></a>: flex-item classes such as `order` go on a container around it)
 const header = () => row('w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-3 bg-[#0F1115]/90 backdrop-blur border-b border-white/10', [
   col('order-1', [el('Link', { text: 'Whoobe', link: '/', css: 'text-xl font-bold text-white font-heading' })]),
-  col('order-2 md:order-3', [el('Link', { text: 'Try the sandbox', link: 'https://sandbox.whoobe.dev', css: 'inline-block px-4 py-2 rounded-lg font-semibold text-sm bg-[#7C3AED] text-white hover:bg-[#6D28D9]' })]),
+  col('order-2 md:order-3', [el('Link', { text: 'Run it on your machine', link: 'https://github.com/swina/whoobe_project#try-it', css: 'inline-block px-4 py-2 rounded-lg font-semibold text-sm bg-[#7C3AED] text-white hover:bg-[#6D28D9]' })]),
   row('order-3 md:order-2 w-full md:w-auto items-center gap-5 overflow-x-auto flex-nowrap whitespace-nowrap md:justify-end', [navLink('Platform', '/platform'), navLink('Security', '/security'), navLink('Run it', '/run'), navLink('Developers', '/developers'), navLink('Blog', '/blog'), navLink('Docs', DOCS), navLink('GitHub', 'https://github.com/swina/whoobe_project')]),
 ], { semantic: 'header' });
 const fcol = (title, links) => col('gap-2', [p(title, 'text-sm font-semibold text-white'), ...links.map(([t, href]) => el('Link', { text: t, link: href, css: 'text-sm text-slate-400 hover:text-white' }))]);
@@ -75,7 +75,7 @@ const footer = () => col('w-full px-6 py-12 bg-[#0B0D11] border-t border-white/1
     row('gap-12 flex-wrap', [
       fcol('Product', [['Platform', '/platform'], ['Security and governance', '/security'], ['Run it', '/run']]),
       fcol('Developers', [['Documentation', DOCS], ['API reference', `${DOCS}/api/api-reference/`], ['GitHub', 'https://github.com/swina/whoobe_project'], ['Plans and decisions', 'https://github.com/swina/whoobe_project/tree/master/docs/plans']]),
-      fcol('Project', [['Blog', '/blog'], ['Release notes', `${DOCS}/release-notes-0.2.0/`], ['Questions and ideas', 'https://github.com/swina/whoobe_project/discussions'], ['Security policy', 'https://github.com/swina/whoobe_project/blob/master/SECURITY.md'], ['Sandbox', 'https://sandbox.whoobe.dev']]),
+      fcol('Project', [['Blog', '/blog'], ['Release notes', `${DOCS}/release-notes-0.2.0/`], ['Questions and ideas', 'https://github.com/swina/whoobe_project/discussions'], ['Security policy', 'https://github.com/swina/whoobe_project/blob/master/SECURITY.md'], ['Run it on your machine', 'https://github.com/swina/whoobe_project#try-it']]),
     ]),
   ]),
   p('Released under the MIT License. This site is made with Whoobe.', 'text-xs text-slate-500 max-w-6xl mx-auto w-full pt-8'),
@@ -87,7 +87,7 @@ const homeHero = () => col('w-full px-6 pt-24 pb-20 bg-gradient-to-br from-[#0F1
     eyebrow('Unify your stack', 'text-cyan-300'),
     h(1, 'A self-hosted platform instead of the glue between your CMS, your data and your systems.', 'text-4xl md:text-5xl font-bold leading-tight'),
     p('Configure it instead of coding it. No code for the people who use it. Security and governance controls built in, with the tests and their results in the open. MIT licence, one organisation per installation, no per-user fee.', 'text-lg text-slate-300 max-w-3xl'),
-    row('gap-3 flex-wrap items-center', [cta('Try the live sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Run it on your machine', link: `${DOCS}/operations/miniguide-deployment/`, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' }), el('Link', { text: 'Read the documentation →', link: DOCS, css: 'text-sm text-slate-300 hover:text-white underline underline-offset-4' })]),
+    row('gap-3 flex-wrap items-center', [cta('Run it on your machine', 'https://github.com/swina/whoobe_project#try-it', 'light'), el('Link', { text: 'Install it on a server', link: `${DOCS}/operations/miniguide-deployment/`, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' }), el('Link', { text: 'Read the documentation →', link: DOCS, css: 'text-sm text-slate-300 hover:text-white underline underline-offset-4' })]),
     p('<code>git clone https://github.com/swina/whoobe_project &amp;&amp; cd whoobe_project &amp;&amp; ./try.sh</code>', 'text-xs text-slate-400 font-mono break-all'),
     p('MIT · self-hosted · version 0.2.0 · no per-user fee', 'text-xs text-slate-500'),
   ]),
@@ -130,7 +130,7 @@ const homeBody = () => [
     h(2, 'Where it stands', 'text-3xl font-bold text-white'),
     p(`Version <strong>0.2.0</strong>, a <code>0.</code> series: behaviour can change between minor releases, and the ${a(`${DOCS}/release-notes-0.2.0/`, 'release notes')} say what. One OpenID Connect provider, no SAML or LDAP, no high availability yet. The limits are on ${a('/security#not-there', 'one page')}, not in the small print.`, 'text-slate-300 max-w-3xl'),
   ], 'bg-[#0F1115]'),
-  bandCta('Try it before you read more', 'The sandbox has a demo website, two kits and the editor. It is deleted and rebuilt every three hours.', [cta('Open the sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Run the whole stack locally', link: 'https://github.com/swina/whoobe_project#try-it', css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
+  bandCta('Try it before you read more', 'One command starts the whole stack on your machine: <code>./try.sh</code> downloads the released images and prints the address and the login.', [cta('Run it on your machine', 'https://github.com/swina/whoobe_project#try-it', 'light'), el('Link', { text: 'Read the documentation', link: DOCS, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
 // ---------------- Platform ----------------
@@ -150,7 +150,7 @@ const platformBody = () => [
     block('Events and forms', 'Subscriptions to changes of objects, files and pages, with signed deliveries, retries and a guard against loops; forms with file uploads. The engine that reacts to an event is yours (Node-RED, n8n, your own service): Whoobe emits, it does not impose one.', 'Polling jobs to find out that something changed.', `${a(`${DOCS}/communication/object-events/`, 'Object events →')} · ${a(`${DOCS}/communication/automations-architecture/`, 'Automations →')}`),
     block('Publishing', 'A static or server-rendered website (Nuxt or Next.js), a documentation site from Markdown, a native mobile app (Capacitor) or the headless API with adapters for React, Vue, Next.js, Nuxt and Svelte.', 'A different pipeline for each surface.', `${a(`${DOCS}/content/publishing/`, 'Publishing →')} · ${a(`${DOCS}/content/headless-sdk/`, 'Headless SDK →')}`),
   ], 'bg-[#0F1115]'),
-  bandCta('See it working', `The ${'sandbox'} has a demo website, two kits and the editor; <code>./try.sh</code> runs the whole stack on your machine.`, [cta('Open the sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Read the documentation', link: DOCS, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
+  bandCta('See it working', '<code>./try.sh</code> runs the whole stack on your machine with one command: the editor, the dashboard, a demo website.', [cta('Run it on your machine', 'https://github.com/swina/whoobe_project#try-it', 'light'), el('Link', { text: 'Read the documentation', link: DOCS, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
 // ---------------- Security ----------------
@@ -233,7 +233,7 @@ const securityBody = () => [
       p(`It is a <strong><code>0.</code> series</strong>: behaviour can change between minor releases. The ${a(`${DOCS}/release-notes-0.2.0/`, 'release notes')} list what.`, 'text-slate-300'),
     ]),
   ], 'bg-[#0F1115]', { anchor: 'not-there' }),
-  bandCta('Check it yourself', 'The sandbox is the real product with the risky features switched off, and the tests and their results are public.', [cta('Open the sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'Read the results of 0.2.0', link: 'https://github.com/swina/whoobe_project/blob/master/docs/release/security/results/v0.2.0.md', css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
+  bandCta('Check it yourself', 'Run the real product on your machine with <code>./try.sh</code>; the tests and their results are public.', [cta('Run it on your machine', 'https://github.com/swina/whoobe_project#try-it', 'light'), el('Link', { text: 'Read the results of 0.2.0', link: 'https://github.com/swina/whoobe_project/blob/master/docs/release/security/results/v0.2.0.md', css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
 // ---------------- Run it ----------------
@@ -261,7 +261,7 @@ const runBody = () => [
       col('flex-1 gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-6', [h(3, 'Not for (today)', 'text-lg font-semibold text-amber-300'), p('A team with nobody to run a server; a deployment that needs high availability or a third-party compliance certificate; a business that wants one shared platform for many unrelated companies.', 'text-slate-300')]),
     ]),
   ], 'bg-[#0F1115]'),
-  bandCta('Start with the sandbox', 'Then run the whole stack on your machine with one command.', [cta('Open the sandbox', 'https://sandbox.whoobe.dev', 'light'), el('Link', { text: 'The deployment guide', link: `${DOCS}/operations/miniguide-deployment/`, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
+  bandCta('Start on your machine', 'One command runs the whole stack with Docker: <code>./try.sh</code>. Then the deployment guide for a real installation.', [cta('Run it on your machine', 'https://github.com/swina/whoobe_project#try-it', 'light'), el('Link', { text: 'The deployment guide', link: `${DOCS}/operations/miniguide-deployment/`, css: 'inline-block px-6 py-3 rounded-lg font-semibold text-sm border border-white/40 text-white hover:bg-white/10' })]),
 ];
 
 // ---------------- Developers ----------------
@@ -286,7 +286,7 @@ const content = {
   themeName: 'Whoobe Website',
   website: { name: 'whoobe.dev', rootPath: '/whoobe-dev', domains: ['www.whoobe.dev'], defaultLocale: 'en', supportedLocales: ['en'] },
   snippets: [
-    { name: 'whoobe.dev header', category: 'navigation', icon: '🧭', node: header(), notes: 'The site header: brand, navigation, the sandbox button. Placed by the default template "Site layout".' },
+    { name: 'whoobe.dev header', category: 'navigation', icon: '🧭', node: header(), notes: 'The site header: brand, navigation, the button to run it on your machine. Placed by the default template "Site layout".' },
     { name: 'whoobe.dev footer', category: 'footer', icon: '🦶', node: footer(), notes: 'The site footer: three columns of links and the licence line. Placed by the default template "Site layout".' },
   ],
   template: { name: 'Site layout', description: 'Header and footer snippets around every page of whoobe.dev.', isDefault: true, headerSnippet: 'whoobe.dev header', footerSnippet: 'whoobe.dev footer' },

@@ -1,0 +1,161 @@
+- doc: README.md
+- title: Documentation by role
+  index: by-role/README.md
+  items:
+    - doc: by-role/ceo.md
+    - doc: by-role/data-owners.md
+    - doc: by-role/developers.md
+    - doc: by-role/it-manager.md
+    - doc: by-role/marketing-and-content.md
+    - doc: by-role/operators.md
+    - doc: by-role/security-and-compliance.md
+- title: Overview
+  items:
+    - doc: overview/what-you-can-do.md
+    - doc: overview/what-is-whoobe.md
+    - doc: overview/whoobe-overview.md
+    - doc: community/why-sponsor-and-contribute.md
+    - doc: overview/executive-summary.md
+- title: Architecture
+  items:
+    - doc: architecture/architecture-overview.md
+    - doc: architecture/authentication-and-authorization.md
+    - doc: architecture/data-and-storage.md
+    - title: Design decisions
+      index: architecture/design-decisions/README.md
+      items:
+        - doc: architecture/design-decisions/a-simple-stack.md
+        - doc: architecture/design-decisions/client-access-without-user-accounts.md
+        - doc: architecture/design-decisions/credentials-stay-on-the-server.md
+        - doc: architecture/design-decisions/draft-is-never-public.md
+        - doc: architecture/design-decisions/no-automation-engine-of-our-own.md
+        - doc: architecture/design-decisions/one-renderer-many-outputs.md
+        - doc: architecture/design-decisions/one-workspace-per-organisation.md
+        - doc: architecture/design-decisions/self-hosted-and-mit.md
+        - doc: architecture/design-decisions/the-data-model-is-data.md
+- title: Content
+  index: content/README.md
+  items:
+    - doc: content/headless-sdk.md
+    - title: Websites
+      items:
+        - doc: content/website-bundle.md
+        - doc: content/documentation-sites.md
+        - doc: content/website-wizard.md
+        - doc: content/site-from-specification.md
+        - doc: content/ai-site-spec/instructions.md
+        - doc: content/ai-site-spec/README.md
+    - title: Page Builder
+      items:
+        - doc: content/dynamic-website-paths.md
+        - doc: content/linked-bindings.md
+        - doc: content/nested-bindings.md
+        - doc: content/table-element.md
+        - doc: content/markdown-element.md
+        - doc: content/download-element.md
+        - doc: content/audio-element.md
+        - doc: content/alpine-presets.md
+    - title: Publishing
+      items:
+        - doc: content/publishing/capacitor-mobile-app.md
+        - doc: content/publishing/website-publishing.md
+- title: "Data (PIM / MDM)"
+  index: data/README.md
+  items:
+    - doc: data/data-model.md
+    - doc: content/objects-list.md
+    - doc: communication/object-events.md
+- title: Communication
+  index: communication/README.md
+  items:
+    - doc: communication/api-clients.md
+    - doc: communication/api-gateway-security.md
+    - doc: communication/automations-architecture.md
+    - doc: communication/brevo-integration.md
+    - doc: communication/form-uploads.md
+    - doc: communication/integrations.md
+    - doc: communication/mail-providers.md
+    - doc: communication/marketing-automation.md
+    - doc: communication/node-red.md
+- title: "DAM (digital asset management)"
+  index: dam/README.md
+  items:
+    - doc: dam/asset-management.md
+- title: "Operations: start here"
+  index: operations/README.md
+  items:
+    - doc: operations/private-network.md
+    - doc: operations/backup-restore-and-dr.md
+    - doc: operations/capacity-and-scaling.md
+    - doc: operations/configuration-reference.md
+    - doc: operations/creating-workspaces.md
+    - doc: operations/deployment.md
+    - doc: operations/encryption.md
+    - doc: operations/miniguide-deployment.md
+    - doc: operations/observability-and-logging.md
+    - doc: operations/sandbox.md
+    - doc: operations/secrets-and-keys.md
+    - doc: operations/storage-backends.md
+    - doc: operations/upgrade-and-migrations.md
+    - doc: operations/skills-and-effort.md
+- title: Security
+  index: security/README.md
+  items:
+    - doc: security/security-test-suite.md
+    - doc: security/test-suite-summary.md
+    - doc: security/threat-model.md
+    - doc: security/security-ci-for-forks.md
+    - doc: security/security-testing-plan.md
+    - doc: security/data-protection.md
+    - doc: operations/data-subject-requests.md
+    - doc: operations/single-sign-on.md
+    - doc: security/findings.md
+    - doc: security/manual-test-checklist.md
+    - doc: security/supply-chain.md
+    - doc: operations/audit-log.md
+    - doc: security/results/README.md
+    - doc: security/status-summary.md
+    - doc: security/results/v0.3.3.md
+    - doc: security/results/v0.3.2.md
+    - doc: security/results/v0.3.1.md
+    - doc: security/results/v0.3.0.md
+    - doc: security/results/v0.2.0.md
+    - doc: operations/scheduling-backups.md
+    - doc: security/disclosure-policy.md
+- title: "Settings (configuration)"
+  index: settings/README.md
+  items:
+    - doc: settings/settings-guide.md
+- title: Guides
+  index: guides/README.md
+  items:
+    - title: "Whoobe — User Manual"
+      index: guides/user-manual/README.md
+      items:
+        - doc: guides/user-manual/03-dashboard-tour.md
+        - doc: guides/user-manual/04-first-page.md
+        - doc: guides/user-manual/05-page-builder.md
+        - doc: guides/user-manual/06-snippets-kits.md
+        - doc: guides/user-manual/07-themes.md
+- title: AI
+  index: ai/README.md
+  items:
+    - doc: ai/ai-features.md
+- title: API
+  items:
+    - doc: api/api-reference.md
+- title: Community
+  items:
+    - doc: community/project-evolution.md
+- title: Releases
+  items:
+    - doc: release-process.md
+    - doc: release-notes-0.3.3.md
+    - doc: release-notes-0.3.2.md
+    - doc: release-notes-0.3.1.md
+    - doc: release-notes-0.3.0.md
+    - doc: release-notes-0.2.0.md
+    - doc: release-notes-0.1.1.md
+    - doc: release-notes-0.1.0.md
+- doc: whoobe-history.md
+- doc: credits.md
