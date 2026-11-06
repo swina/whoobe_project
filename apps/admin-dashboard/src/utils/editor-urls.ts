@@ -61,3 +61,13 @@ export function websiteDraftPreviewUrl(website: { rootPath: string | null; defau
   const query = `?locale=${encodeURIComponent(website.defaultLocale || 'en')}${rootPath ? `&rootPath=${encodeURIComponent(rootPath)}` : ''}&draft=true`
   return `${getSitePreviewBaseUrl()}${rootPath}/${query}`
 }
+
+/** `url` with `print=true` added to its query (existing query and hash kept): the page opens its print dialog once rendered
+ *  with its template and theme, for "Save as PDF" (whoobe-one-spike's scripts/print-page.ts). */
+export function withPrintFlag(url: string): string {
+  const hash = url.indexOf('#')
+  const main = hash >= 0 ? url.slice(0, hash) : url
+  const frag = hash >= 0 ? url.slice(hash) : ''
+  if (/[?&]print=true(&|$)/.test(main)) return url
+  return main + (main.includes('?') ? '&' : '?') + 'print=true' + frag
+}

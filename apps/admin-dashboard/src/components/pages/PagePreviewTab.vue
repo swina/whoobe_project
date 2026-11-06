@@ -1,5 +1,17 @@
 <template>
   <div v-if="iframeSrc" class="h-full flex flex-col gap-2">
+    <div class="shrink-0 flex items-center justify-end">
+      <a
+        :href="printSrc ?? undefined"
+        target="_blank"
+        rel="noopener"
+        data-testid="page-export-pdf"
+        class="flex items-center gap-1.5 rounded-lg border border-slate-700 light:border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-300 light:text-slate-700 hover:bg-slate-800 light:hover:bg-slate-100"
+        title="Opens the page as a visitor sees it (template and theme included) and the print dialog: choose &quot;Save as PDF&quot;"
+      >
+        <FileDown class="w-3.5 h-3.5" /> Export PDF
+      </a>
+    </div>
     <details v-if="page" class="shrink-0 rounded-xl border border-slate-800 light:border-slate-200 px-3 py-2 text-xs">
       <summary class="cursor-pointer font-semibold text-slate-400">
         SEO applied to this preview
@@ -64,13 +76,13 @@
 // non-dynamic page). A dynamic page with no override shows a notice
 // instead of guessing - see docs/plans/website/website-paths.md.
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { Eye } from '@lucide/vue'
+import { Eye, FileDown } from '@lucide/vue'
 import { usePagesStore } from '../../stores/pagesStore'
 import { useTabsStore } from '../../stores/tabsStore'
 import { useWebsitesStore } from '../../stores/websitesStore'
 import type { WhoobeOnePage, PageSeo } from '../../utils/pages-api'
 import { seoHasTokens, hasSeoTokens } from '@whoobe-cms/core'
-import { getSitePreviewBaseUrl } from '../../utils/editor-urls'
+import { getSitePreviewBaseUrl, withPrintFlag } from '../../utils/editor-urls'
 
 const props = defineProps<{
   pageId: string
@@ -106,6 +118,10 @@ const iframeSrc = computed(() => {
   }
   return null
 })
+
+// "Export PDF": the same address in a new tab with `print=true` - whoobe-one-spike's PublicPage.vue renders the page with
+// its template and theme, then opens the browser's print dialog (scripts/print-page.ts there).
+const printSrc = computed(() => (iframeSrc.value ? withPrintFlag(iframeSrc.value) : null))
 
 // SEO as the preview actually renders it. A dynamic page's meta fields can
 // hold `{field}` tokens; the embedded whoobe-one-spike page resolves them from
