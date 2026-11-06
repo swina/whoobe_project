@@ -84,6 +84,17 @@
       >
         <Camera class="w-3.5 h-3.5" /> {{ capturing ? 'Capturing…' : 'Capture thumbnail' }}
       </button>
+      <button
+        v-if="!editor.snippetMode"
+        type="button"
+        data-testid="editor-export-pdf"
+        class="flex items-center gap-1 px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50"
+        :disabled="exporting || !editor.page?.id"
+        :title="!editor.page?.id ? 'Save the page first: the PDF uses its address, website template and theme' : 'Print this page with its website template and theme (unsaved changes included): choose &quot;Save as PDF&quot;'"
+        @click="exportPdf"
+      >
+        <FileDown class="w-3.5 h-3.5" /> {{ exporting ? 'Opening…' : 'Export PDF' }}
+      </button>
       <span class="text-gray-400">Esc to close</span>
       <button class="flex items-center gap-1 px-2 py-1 rounded bg-gray-700 hover:bg-gray-600" @click="$emit('close')"><X class="w-3.5 h-3.5" /> Close</button>
     </div>
@@ -149,7 +160,7 @@
 // regardless of how it was opened, since there's no persisted preference
 // for which device mode to reopen into.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { Camera, Monitor, RectangleHorizontal, RectangleVertical, Smartphone, Tablet, X } from '@lucide/vue'
+import { Camera, FileDown, Monitor, RectangleHorizontal, RectangleVertical, Smartphone, Tablet, X } from '@lucide/vue'
 import type Element from '../scripts/ElementsClass.js'
 import { resolveDocumentData } from '../scripts/data-resolver'
 import { isDynamicSlug, matchAgainstPattern } from '../scripts/path-pattern'
@@ -158,7 +169,9 @@ import BlockContainerPreview from './preview/BlockContainerPreview.vue'
 import { resetSelections } from '../scripts/selection-state'
 import { useThemeStyles } from '../composables/useThemeStyles'
 import { captureElementThumbnail, notifyParentThumbnailSaved, pageBackgroundColor, type CaptureOptions } from '../scripts/capture-thumbnail'
-import { setPageThumbnail } from '../pages-api'
+import { getPage, setPageThumbnail } from '../pages-api'
+import { fetchWebsites } from '../websites-api'
+import { editorPrintUrl, stashEditorDoc } from '../scripts/print-page'
 import { setSnippetThumbnail } from '../snippets-api'
 
 const props = defineProps<{
@@ -318,6 +331,36 @@ async function captureThumbnail() {
     captureMessage.value = e instanceof Error ? e.message : 'Capture failed'
   } finally {
     capturing.value = false
+  }
+}
+
+// "Export PDF": the document as it is in the editor, printed at the page's own address so it gets the website template
+// (header/aside/footer) and the theme - see scripts/print-page.ts. The tab is opened before any await, so the browser
+// does not take it for a popup; it gets its address once the page's locale and its website's root path are known.
+const exporting = ref(false)
+async function exportPdf() {
+  const id = editor.page?.id ? String(editor.page.id) : null
+  if (!id || !props.doc) return
+  const tab = window.open('', '_blank')
+  exporting.value = true
+  captureFailed.value = false
+  captureMessage.value = ''
+  try {
+    const saved = await getPage(id)
+    if (saved.kind === 'module') throw new Error('A template module has no address of its own: export the page that uses it')
+    const path = isDynamicSlug(saved.slug) ? previewPath.value : saved.slug
+    if (!path || isDynamicSlug(path)) throw new Error('Type the path of one record in "Preview as path" first')
+    const rootPath = saved.websiteId ? (await fetchWebsites()).find((w) => w.id === saved.websiteId)?.rootPath ?? '' : ''
+    stashEditorDoc(id, JSON.parse(JSON.stringify(props.doc)))
+    const url = editorPrintUrl({ origin: window.location.origin, base: import.meta.env.BASE_URL, rootPath, path, locale: saved.locale, pageId: id })
+    if (tab) tab.location.href = url
+    else window.open(url, '_blank')
+  } catch (e) {
+    tab?.close()
+    captureFailed.value = true
+    captureMessage.value = e instanceof Error ? e.message : 'Export failed'
+  } finally {
+    exporting.value = false
   }
 }
 

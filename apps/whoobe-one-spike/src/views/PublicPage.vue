@@ -1,6 +1,6 @@
 <template>
   <!-- Draft preview from the dashboard: the pages that are not published are shown here, and only here. -->
-  <div v-if="draftMode" class="fixed top-2 right-2 z-[9999] pointer-events-none flex items-center gap-2 rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-lg" data-testid="draft-badge">
+  <div v-if="draftMode" class="fixed top-2 right-2 z-[9999] pointer-events-none flex items-center gap-2 rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-lg" data-testid="draft-badge" data-print-hidden>
     Draft preview<span v-if="pageUnpublished" class="font-normal normal-case tracking-normal">· this page is not published</span>
   </div>
   <div v-if="loading" class="p-8 text-center text-gray-400 text-sm">Loading…</div>
@@ -54,7 +54,7 @@
 // is meant to look like the actual page, not a preview-within-the-editor.
 // When the page's website has a template, `layout` (returned by the public
 // API) renders the header/aside/main/footer shell around the body.
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { getPublicPage, getPublicPageByPath, isDraftPreview, type PublicPageLookup, type WhoobeOnePage } from '../pages-api'
 import { resolveDocumentData } from '../scripts/data-resolver'
@@ -67,6 +67,8 @@ import { safeAlpineValue } from '../helpers'
 import { applyPageSeo } from '../scripts/apply-seo'
 import { pickSeoBinding, resolveSeoTemplates } from '@whoobe-cms/core'
 import { parentTargetOrigin } from '../scripts/parent-origin'
+import { isPrintRequest, printWhenReady, takeEditorDoc } from '../scripts/print-page'
+import { stripEditorRootClasses } from '../scripts/editor-root-classes'
 
 const route = useRoute()
 const editor = useEditorStore()
@@ -231,6 +233,12 @@ onMounted(async () => {
     const locale = page.locale || 'en'
     pageUnpublished.value = draftMode && page.published === false
     doc.value = page.content
+    // Printed from the editor: its document (unsaved changes included) in place of the saved content, same page only.
+    const editorDocId = typeof route.query.editorDoc === 'string' ? route.query.editorDoc : ''
+    if (isPrintRequest() && editorDocId && editorDocId === page.id) {
+      const fromEditor = takeEditorDoc(editorDocId)
+      if (fromEditor) doc.value = stripEditorRootClasses(fromEditor)
+    }
     layout.value = pageLayout ?? null
     // Load the page's theme before resolving data, so theme styles are
     // available for the rendered content.
@@ -297,6 +305,11 @@ onMounted(async () => {
     error.value = true
   } finally {
     loading.value = false
+  }
+  // "Export PDF" (`?print=true`): the browser's print dialog once the page, its template and its theme are on screen.
+  if (isPrintRequest() && doc.value && !error.value) {
+    await nextTick()
+    printWhenReady().catch((e) => console.warn('[PublicPage] print failed:', e))
   }
 })
 </script>
