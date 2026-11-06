@@ -27,7 +27,7 @@
     </header>
 
     <div class="max-w-[100rem] mx-auto px-4 flex gap-6 lg:gap-10">
-      <aside :class="['md:block w-56 shrink-0 py-6 md:sticky md:top-14 md:self-start md:max-h-[calc(100vh-3.5rem)] overflow-y-auto', menuOpen ? 'block fixed inset-x-0 top-14 bottom-0 z-10 bg-white px-4' : 'hidden']" data-testid="docs-nav">
+      <aside :class="['md:block w-56 shrink-0 py-6 md:sticky md:top-14 md:self-start md:max-h-[calc(100vh-3.5rem)] overflow-y-auto', menuOpen ? 'block fixed inset-x-0 top-14 bottom-0 z-10 bg-white px-4' : 'hidden']" data-testid="docs-nav" ref="navEl">
         <DocsNavTree v-if="view" :items="view.nav" :current="view.page.route" :href-of="hrefOf" @go="go" />
       </aside>
 
@@ -108,6 +108,18 @@ function toggleTheme() {
 }
 let observer: IntersectionObserver | null = null
 
+// the index scrolls to the current page (itself only: the page stays where it is); on a phone it is hidden until the menu opens it
+const navEl = ref<HTMLElement | null>(null)
+function showCurrentInNav() {
+  const nav = navEl.value
+  const cur = nav?.querySelector<HTMLElement>('a[aria-current="page"]')
+  if (!nav || !cur || !nav.clientHeight) return
+  const n = nav.getBoundingClientRect(), c = cur.getBoundingClientRect()
+  if (c.top < n.top || c.bottom > n.bottom) nav.scrollTop += c.top - n.top - (nav.clientHeight - c.height) / 2
+}
+// after the next frames: the menu's position and height come from utilities the in-browser Tailwind engine generates as they appear
+watch(menuOpen, (isOpen) => { if (isOpen) void nextTick(() => requestAnimationFrame(() => requestAnimationFrame(showCurrentInNav))) })
+
 /** The address of a document of this site, base path of the application included. */
 function hrefOf(route: string): string {
   return router.resolve(`${props.site.rootPath}${route === '/' ? '' : route}` || '/').href
@@ -130,6 +142,7 @@ async function load() {
     loading.value = false
   }
   await nextTick()
+  showCurrentInNav()
   watchHeadings()
   void drawMermaid(content.value)
   const hash = window.location.hash.slice(1)
